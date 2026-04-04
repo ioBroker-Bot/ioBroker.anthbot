@@ -43,16 +43,8 @@
             "uk": "Підключайтеся до пристроїв Anthbot, наприклад до їхніх роботів-косарок",
             "zh-cn": "与 Anthbot 设备连接，例如机器人割草机"
         },
-        "authors": [
-            "Robin Rainton <robin@rainton.com>"
-        ],
-        "keywords": [
-            "robot",
-            "mower",
-            "IoT",
-            "Anthbot",
-            "lawn"
-        ],
+        "authors": ["Robin Rainton <robin@rainton.com>"],
+        "keywords": ["robot", "mower", "IoT", "Anthbot", "lawn"],
         "licenseInformation": {
             "type": "free",
             "license": "MIT"
@@ -84,9 +76,24 @@
         ]
     },
     "native": {
-        "option1": true,
-        "option2": "42"
+        "username": "",
+        "password": "",
+        "regionCode": null
     },
     "objects": [],
-    "instanceObjects": []
+    "instanceObjects": [
+        {
+            "_id": "info.connection",
+            "type": "state",
+            "common": {
+                "role": "indicator.connected",
+                "name": "Device is online",
+                "type": "boolean",
+                "read": true,
+                "write": false,
+                "def": false
+            },
+            "native": {}
+        }
+    ]
 }
