@@ -2,25 +2,58 @@
     "i18n": true,
     "type": "panel",
     "items": {
-        "option1": {
-            "type": "checkbox",
-            "label": "option1",
-            "newLine": true,
-            "xs": 12,
-            "sm": 12,
-            "md": 6,
-            "lg": 4,
-            "xl": 4
-        },
-        "option2": {
+        "username": {
             "type": "text",
-            "label": "option2",
+            "label": "Username",
+            "newLine": true
+        },
+        "password": {
+            "type": "password",
+            "label": "Password",
+            "newLine": true
+        },
+        "regionCode": {
+            "type": "select",
+            "label": "Region",
             "newLine": true,
-            "xs": 12,
-            "sm": 12,
-            "md": 6,
-            "lg": 4,
-            "xl": 4
+            "options": [
+                { "value": 61, "label": "Australia" },
+                { "value": 43, "label": "Austria" },
+                { "value": 32, "label": "Belgium" },
+                { "value": 55, "label": "Brazil" },
+                { "value": 1, "label": "United States / Canada" },
+                { "value": 86, "label": "China" },
+                { "value": 420, "label": "Czech Republic" },
+                { "value": 45, "label": "Denmark" },
+                { "value": 358, "label": "Finland" },
+                { "value": 33, "label": "France" },
+                { "value": 49, "label": "Germany" },
+                { "value": 30, "label": "Greece" },
+                { "value": 36, "label": "Hungary" },
+                { "value": 91, "label": "India" },
+                { "value": 353, "label": "Ireland" },
+                { "value": 39, "label": "Italy" },
+                { "value": 81, "label": "Japan" },
+                { "value": 352, "label": "Luxembourg" },
+                { "value": 52, "label": "Mexico" },
+                { "value": 31, "label": "Netherlands" },
+                { "value": 64, "label": "New Zealand" },
+                { "value": 47, "label": "Norway" },
+                { "value": 48, "label": "Poland" },
+                { "value": 351, "label": "Portugal" },
+                { "value": 40, "label": "Romania" },
+                { "value": 65, "label": "Singapore" },
+                { "value": 421, "label": "Slovakia" },
+                { "value": 27, "label": "South Africa" },
+                { "value": 82, "label": "South Korea" },
+                { "value": 34, "label": "Spain" },
+                { "value": 46, "label": "Sweden" },
+                { "value": 41, "label": "Switzerland" },
+                { "value": 90, "label": "Turkey" },
+                { "value": 380, "label": "Ukraine" },
+                { "value": 971, "label": "United Arab Emirates" },
+                { "value": 44, "label": "United Kingdom" }
+            ]
         }
     }
 }
