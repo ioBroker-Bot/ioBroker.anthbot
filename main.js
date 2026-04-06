@@ -36,14 +36,6 @@ class Anthbot extends utils.Adapter {
     // Set/reset connection
     async setConnected(connected) {
         await this.setState('info.connection', connected, true);
-        if (!connected && this.pollingInterval) {
-            // We aren't connected any more, so stop polling (if we were)
-            this.clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
-            this.log.info('Disconnected');
-        } else {
-            this.log.info('Connected');
-        }
     }
 
     /**
@@ -68,6 +60,7 @@ class Anthbot extends utils.Adapter {
             this.clearTimeout(this.retryTimer);
             this.retryTimer = null;
         }
+        this.clearPolling();
         await this.setConnected(false);
         this.client = null;
 
@@ -130,11 +123,18 @@ class Anthbot extends utils.Adapter {
         // TODO: handle multiple devices (currently we just take the first one)
         const device = devices[0];
         this.log.info(`Connecting to ${device.alias} (${device.sn})`);
-        await this.createShadowObjects(device);
+        await this.createDeviceObjects(device);
         await this.pollDevice(device);
         this.pollingInterval = this.setInterval(async () => {
             this.pollDevice(device);
         }, POLLING_INTERVAL);
+    }
+
+    clearPolling() {
+        if (this.pollingInterval) {
+            this.clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+        }
     }
 
     // Poll device
@@ -148,10 +148,20 @@ class Anthbot extends utils.Adapter {
             // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
             this.retryConnection();
         }
+
+        try {
+            const codeList = await this.client?.asyncGetCodeList(device.sn);
+            this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
+            await this.setCodeList(device, codeList);
+        } catch (err) {
+            this.log.error(`Failed to fetch code list for device ${device.sn}: ${err.message}`);
+            // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
+            this.retryConnection();
+        }
     }
 
     // Create objects for device
-    async createShadowObjects(device) {
+    async createDeviceObjects(device) {
         await this.setObjectNotExistsAsync(device.sn, {
             type: 'device',
             common: {
@@ -160,6 +170,7 @@ class Anthbot extends utils.Adapter {
             native: {},
         });
 
+        // Shadow properties...
         await this.setObjectNotExistsAsync(`${device.sn}.elec`, {
             type: 'state',
             common: {
@@ -214,18 +225,67 @@ class Anthbot extends utils.Adapter {
             },
             native: {},
         });
+
+        // Code list (aka. messages)
+        await this.setObjectNotExistsAsync(`${device.sn}.last_code`, {
+            type: 'state',
+            common: {
+                name: 'last_code',
+                type: 'number',
+                desc: 'Last code',
+                role: 'value',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.last_code_text`, {
+            type: 'state',
+            common: {
+                name: 'last_code_text',
+                type: 'string',
+                role: 'text',
+                desc: 'Last code text',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.last_code_type`, {
+            type: 'state',
+            common: {
+                name: 'last_code_type',
+                type: 'string',
+                role: 'text',
+                desc: 'Last code type (e.g. event, error, etc.)',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
     }
 
     // Helper function to set shadow state values
     async setShadowState(device, shadowState) {
         if (shadowState.online.value) {
             this.setConnected(true);
+        } else {
+            this.setConnected(false);
         }
 
-        this.setState(`${device.sn}.elec`, { val: shadowState.elec.value, ack: true });
-        this.setState(`${device.sn}.mode`, { val: shadowState.mode.value, ack: true });
-        this.setState(`${device.sn}.mowing_area`, { val: shadowState.mowing_area.value, ack: true });
-        this.setState(`${device.sn}.mowing_time`, { val: shadowState.mowing_time.value, ack: true });
+        this.setStateChanged(`${device.sn}.elec`, { val: shadowState.elec.value, ack: true });
+        this.setStateChanged(`${device.sn}.mode`, { val: shadowState.mode.value, ack: true });
+        this.setStateChanged(`${device.sn}.mowing_area`, { val: shadowState.mowing_area.value, ack: true });
+        this.setStateChanged(`${device.sn}.mowing_time`, { val: shadowState.mowing_time.value, ack: true });
+    }
+
+    async setCodeList(device, codeList) {
+        const lastCode = codeList[0];
+        this.setStateChanged(`${device.sn}.last_code`, { val: lastCode.code, ack: true });
+        this.setStateChanged(`${device.sn}.last_code_text`, { val: lastCode.event_message, ack: true });
+        this.setStateChanged(`${device.sn}.last_code_type`, { val: lastCode.code_type, ack: true });
     }
 
     /**
@@ -235,7 +295,7 @@ class Anthbot extends utils.Adapter {
      */
     onUnload(callback) {
         try {
-            // Setting connection false will clear the polling interval.
+            this.clearPolling();
             this.setConnected(false).then(() => {
                 callback();
             });
