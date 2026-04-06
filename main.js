@@ -9,7 +9,11 @@
 const utils = require('@iobroker/adapter-core');
 
 // Load your modules here, e.g.:
-// const fs = require('fs');
+const { AnthbotCloudApiClient } = require('./lib/anthbotApi');
+const POLLING_INTERVAL = 60 * 1000; // Poll every 60 seconds
+const CONNECTION_RETRY_INTERVAL = 30 * 1000; // Starting retry interval
+const CONNECTION_RETRY_BACKOFF = 2; // Exponential backoff factor for connection retries
+const CONNECTION_RETRY_MAX_INTERVAL = 30 * 60 * 1000; // Maximum retry interval
 
 class Anthbot extends utils.Adapter {
     /**
@@ -21,15 +25,25 @@ class Anthbot extends utils.Adapter {
             name: 'anthbot',
         });
         this.on('ready', this.onReady.bind(this));
-        this.on('stateChange', this.onStateChange.bind(this));
-        // this.on('objectChange', this.onObjectChange.bind(this));
-        // this.on('message', this.onMessage.bind(this));
         this.on('unload', this.onUnload.bind(this));
+
+        this.client = null;
+        this.pollingInterval = null;
+        this.retryTimer = null;
+        this.currentRetryInterval = CONNECTION_RETRY_INTERVAL;
     }
 
     // Set/reset connection
-    setConnected(connected) {
-        this.setState('info.connection', connected, true);
+    async setConnected(connected) {
+        await this.setState('info.connection', connected, true);
+        if (!connected && this.pollingInterval) {
+            // We aren't connected any more, so stop polling (if we were)
+            this.clearInterval(this.pollingInterval);
+            this.pollingInterval = null;
+            this.log.info('Disconnected');
+        } else {
+            this.log.info('Connected');
+        }
     }
 
     /**
@@ -44,60 +58,174 @@ class Anthbot extends utils.Adapter {
             this.log.error('Incomplete adapter configuration! Please check settings.');
             this.terminate();
         } else {
-            // The adapters config (in the instance object everything under the attribute "native") is accessible via
-            // this.config:
-            this.log.debug('config option1: ${this.config.option1}');
-            this.log.debug('config option2: ${this.config.option2}');
-
-            /*
-        For every state in the system there has to be also an object of type state
-        Here a simple template for a boolean variable named "testVariable"
-        Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-
-        IMPORTANT: State roles should be chosen carefully based on the state's purpose.
-                   Please refer to the state roles documentation for guidance:
-                   https://www.iobroker.net/#en/documentation/dev/stateroles.md
-        */
-            await this.setObjectNotExistsAsync('testVariable', {
-                type: 'state',
-                common: {
-                    name: 'testVariable',
-                    type: 'boolean',
-                    role: 'indicator',
-                    read: true,
-                    write: true,
-                },
-                native: {},
-            });
-
-            // In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
-            this.subscribeStates('testVariable');
-            // You can also add a subscription for multiple states. The following line watches all states starting with "lights."
-            // this.subscribeStates('lights.*');
-            // Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
-            // this.subscribeStates('*');
-
-            /*
-            setState examples
-            you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
-        */
-            // the variable testVariable is set to true as command (ack=false)
-            await this.setState('testVariable', true);
-
-            // same thing, but the value is flagged "ack"
-            // ack should be always set to true if the value is received from or acknowledged from the target system
-            await this.setState('testVariable', { val: true, ack: true });
-
-            // same thing, but the state is deleted after 30s (getState will return null afterwards)
-            await this.setState('testVariable', { val: true, ack: true, expire: 30 });
-
-            // examples for the checkPassword/checkGroup functions
-            const pwdResult = await this.checkPasswordAsync('admin', 'iobroker');
-            this.log.info(`check user admin pw iobroker: ${pwdResult}`);
-
-            const groupResult = await this.checkGroupAsync('admin', 'admin');
-            this.log.info(`check group user admin group admin: ${groupResult}`);
+            this.loginAndStart();
         }
+    }
+
+    // Retry connection with backoff
+    async retryConnection() {
+        if (this.retryTimer) {
+            this.clearTimeout(this.retryTimer);
+            this.retryTimer = null;
+        }
+        await this.setConnected(false);
+        this.client = null;
+
+        this.log.info(`Setting retry timer for ${this.currentRetryInterval / 1000}s`);
+        this.retryTimer = this.setTimeout(() => {
+            this.log.debug('Retry timer complete');
+            this.retryTimer = null;
+            this.loginAndStart();
+        }, this.currentRetryInterval);
+
+        // Backoff for next retry...
+        this.currentRetryInterval *= CONNECTION_RETRY_BACKOFF;
+
+        // ... but never exceed max retry interval
+        if (this.currentRetryInterval > CONNECTION_RETRY_MAX_INTERVAL) {
+            this.currentRetryInterval = CONNECTION_RETRY_MAX_INTERVAL;
+        }
+    }
+
+    // Login & start processing
+    async loginAndStart() {
+        // Login
+        this.client = new AnthbotCloudApiClient({ verboseLogger: this.log.debug });
+
+        this.log.info('Connecting to Anthbot cloud...');
+        try {
+            await this.client.asyncLogin({
+                username: this.config.username,
+                password: this.config.password,
+                areaCode: this.config.regionCode,
+            });
+        } catch (error) {
+            this.log.error(`Failed to login to Anthbot cloud: ${error.message}`);
+            await this.retryConnection();
+            return;
+        }
+
+        this.log.debug('Login successful');
+
+        this.log.debug('Searching for bound devices...');
+        let devices = null;
+        try {
+            devices = await this.client.asyncGetBoundDevices();
+        } catch (error) {
+            this.log.error(`Failed to fetch bound devices: ${error.message}`);
+            await this.retryConnection();
+            return;
+        }
+        this.log.debug(`Found devices: ${JSON.stringify(devices)}`);
+
+        if (devices.length === 0) {
+            this.log.error('No bound devices found! Please check your Anthbot cloud account.');
+            await this.retryConnection();
+            return;
+        }
+
+        // Things look pretty good here, so reset the retry interval.
+        this.currentRetryInterval = CONNECTION_RETRY_INTERVAL;
+
+        // TODO: handle multiple devices (currently we just take the first one)
+        const device = devices[0];
+        this.log.info(`Connecting to ${device.alias} (${device.sn})`);
+        await this.createShadowObjects(device);
+        await this.pollDevice(device);
+        this.pollingInterval = this.setInterval(async () => {
+            this.pollDevice(device);
+        }, POLLING_INTERVAL);
+    }
+
+    // Poll device
+    async pollDevice(device) {
+        try {
+            const shadowState = await this.client.asyncGetShadowReportedState(device.sn);
+            this.log.debug(`Device shadow reported state:\n${JSON.stringify(shadowState)}`);
+            await this.setShadowState(device, shadowState);
+        } catch (err) {
+            this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
+            // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
+            this.retryConnection();
+        }
+    }
+
+    // Create objects for device
+    async createShadowObjects(device) {
+        await this.setObjectNotExistsAsync(device.sn, {
+            type: 'device',
+            common: {
+                name: device.alias,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.elec`, {
+            type: 'state',
+            common: {
+                name: 'elec',
+                type: 'number',
+                unit: '%',
+                desc: 'Battery level',
+                role: 'level.battery',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.mode`, {
+            type: 'state',
+            common: {
+                name: 'mode',
+                type: 'string',
+                role: 'text',
+                desc: 'Current mode',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.mowing_area`, {
+            type: 'state',
+            common: {
+                name: 'mowing_area',
+                type: 'number',
+                unit: 'm²',
+                desc: 'Current mowing area',
+                role: 'value',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.mowing_time`, {
+            type: 'state',
+            common: {
+                name: 'mowing_time',
+                type: 'number',
+                unit: 's',
+                role: 'time.span',
+                desc: 'Current mowing time',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+    }
+
+    // Helper function to set shadow state values
+    async setShadowState(device, shadowState) {
+        if (shadowState.online.value) {
+            this.setConnected(true);
+        }
+
+        this.setState(`${device.sn}.elec`, { val: shadowState.elec.value, ack: true });
+        this.setState(`${device.sn}.mode`, { val: shadowState.mode.value, ack: true });
+        this.setState(`${device.sn}.mowing_area`, { val: shadowState.mowing_area.value, ack: true });
+        this.setState(`${device.sn}.mowing_time`, { val: shadowState.mowing_time.value, ack: true });
     }
 
     /**
@@ -107,76 +235,15 @@ class Anthbot extends utils.Adapter {
      */
     onUnload(callback) {
         try {
-            // Here you must clear all timeouts or intervals that may still be active
-            // clearTimeout(timeout1);
-            // clearTimeout(timeout2);
-            // ...
-            // clearInterval(interval1);
-
-            callback();
+            // Setting connection false will clear the polling interval.
+            this.setConnected(false).then(() => {
+                callback();
+            });
         } catch (error) {
             this.log.error(`Error during unloading: ${error.message}`);
             callback();
         }
     }
-
-    // If you need to react to object changes, uncomment the following block and the corresponding line in the constructor.
-    // You also need to subscribe to the objects with `this.subscribeObjects`, similar to `this.subscribeStates`.
-    // /**
-    //  * Is called if a subscribed object changes
-    //  * @param {string} id
-    //  * @param {ioBroker.Object | null | undefined} obj
-    //  */
-    // onObjectChange(id, obj) {
-    //     if (obj) {
-    //         // The object was changed
-    //         this.log.info(`object ${id} changed: ${JSON.stringify(obj)}`);
-    //     } else {
-    //         // The object was deleted
-    //         this.log.info(`object ${id} deleted`);
-    //     }
-    // }
-
-    /**
-     * Is called if a subscribed state changes
-     *
-     * @param {string} id - State ID
-     * @param {ioBroker.State | null | undefined} state - State object
-     */
-    onStateChange(id, state) {
-        if (state) {
-            // The state was changed
-            this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-
-            if (state.ack === false) {
-                // This is a command from the user (e.g., from the UI or other adapter)
-                // and should be processed by the adapter
-                this.log.info(`User command received for ${id}: ${state.val}`);
-
-                // TODO: Add your control logic here
-            }
-        } else {
-            // The object was deleted or the state value has expired
-            this.log.info(`state ${id} deleted`);
-        }
-    }
-    // If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
-    // /**
-    //  * Some message was sent to this instance over message box. Used by email, pushover, text2speech, ...
-    //  * Using this method requires "common.messagebox" property to be set to true in io-package.json
-    //  * @param {ioBroker.Message} obj
-    //  */
-    // onMessage(obj) {
-    //     if (typeof obj === 'object' && obj.message) {
-    //         if (obj.command === 'send') {
-    //             // e.g. send email or pushover or whatever
-    //             this.log.info('send command');
-
-    //             // Send response in callback if required
-    //             if (obj.callback) this.sendTo(obj.from, obj.command, 'Message received', obj.callback);
-    //         }
-    //     }
-    // }
 }
 
 if (require.main !== module) {
