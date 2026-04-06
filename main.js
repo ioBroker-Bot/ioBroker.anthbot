@@ -231,6 +231,32 @@ class Anthbot extends utils.Adapter {
             native: {},
         });
 
+        await this.setObjectNotExistsAsync(`${device.sn}.rtk_moved`, {
+            type: 'state',
+            common: {
+                name: 'rtk_moved',
+                type: 'boolean',
+                role: 'sensor.motion',
+                desc: 'RTK movement detected',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        await this.setObjectNotExistsAsync(`${device.sn}.rtk_state`, {
+            type: 'state',
+            common: {
+                name: 'rtk_state',
+                type: 'boolean',
+                role: 'sensor',
+                desc: 'RTK state',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
         // Code list (aka. messages)
         await this.setObjectNotExistsAsync(`${device.sn}.last_code`, {
             type: 'state',
@@ -284,6 +310,8 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.mode`, { val: shadowState.mode.value, ack: true });
         this.setStateChanged(`${device.sn}.mowing_area`, { val: shadowState.mowing_area.value, ack: true });
         this.setStateChanged(`${device.sn}.mowing_time`, { val: shadowState.mowing_time.value, ack: true });
+        this.setStateChanged(`${device.sn}.rtk_moved`, { val: shadowState.rtk.moved == 1, ack: true });
+        this.setStateChanged(`${device.sn}.rtk_state`, { val: shadowState.rtk.state == 1, ack: true });
     }
 
     async setCodeList(device, codeList) {
