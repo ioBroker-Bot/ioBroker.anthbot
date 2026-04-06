@@ -139,24 +139,29 @@ class Anthbot extends utils.Adapter {
 
     // Poll device
     async pollDevice(device) {
-        try {
-            const shadowState = await this.client.asyncGetShadowReportedState(device.sn);
-            this.log.debug(`Device shadow reported state:\n${JSON.stringify(shadowState)}`);
-            await this.setShadowState(device, shadowState);
-        } catch (err) {
-            this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
-            // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
+        if (!this.client) {
+            this.log.warn('No API client available for poll!');
             this.retryConnection();
-        }
+        } else {
+            try {
+                const shadowState = await this.client.asyncGetShadowReportedState(device.sn);
+                this.log.debug(`Device shadow reported state:\n${JSON.stringify(shadowState)}`);
+                await this.setShadowState(device, shadowState);
+            } catch (err) {
+                this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
+                // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
+                this.retryConnection();
+            }
 
-        try {
-            const codeList = await this.client?.asyncGetCodeList(device.sn);
-            this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
-            await this.setCodeList(device, codeList);
-        } catch (err) {
-            this.log.error(`Failed to fetch code list for device ${device.sn}: ${err.message}`);
-            // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
-            this.retryConnection();
+            try {
+                const codeList = await this.client.asyncGetCodeList(device.sn);
+                this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
+                await this.setCodeList(device, codeList);
+            } catch (err) {
+                this.log.error(`Failed to fetch code list for device ${device.sn}: ${err.message}`);
+                // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
+                this.retryConnection();
+            }
         }
     }
 
