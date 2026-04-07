@@ -25,6 +25,7 @@ class Anthbot extends utils.Adapter {
             name: 'anthbot',
         });
         this.on('ready', this.onReady.bind(this));
+        this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
         this.client = null;
@@ -51,6 +52,49 @@ class Anthbot extends utils.Adapter {
             this.terminate();
         } else {
             this.loginAndStart();
+        }
+    }
+
+    /**
+     * Is called if a subscribed state changes
+     *
+     * @param {string} id - State ID
+     * @param {ioBroker.State | null | undefined} state - State object
+     */
+    async onStateChange(id, state) {
+        if (state) {
+            if (state.ack === false) {
+                // This is a command from the user (e.g., from the UI or other adapter)
+                // and should be processed by the adapter
+                this.log.debug(`User command received for ${id}: ${state.val}`);
+
+                if (!this.client) {
+                    this.log.warn('No API client!');
+                } else {
+                    const idParts = id.split('.');
+                    const command = idParts.pop();
+                    idParts.pop(); // Remove 'command' part
+                    const serialNumber = idParts.pop();
+
+                    switch (command) {
+                        case 'start':
+                            await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
+                            await this.client.asyncSendServiceCommand(serialNumber, 'mow_start', 1);
+                            break;
+                        case 'stop':
+                            await this.client.asyncSendServiceCommand(serialNumber, 'stop_all_tasks', 1);
+                            break;
+                        case 'home':
+                            await this.client.asyncSendServiceCommand(serialNumber, 'charge_start', 1);
+                            break;
+                        default:
+                            this.log.warn(`Unknown command: ${command}`);
+                    }
+                }
+            }
+        } else {
+            // The object was deleted or the state value has expired
+            this.log.info(`state ${id} deleted`);
         }
     }
 
@@ -121,12 +165,13 @@ class Anthbot extends utils.Adapter {
         this.currentRetryInterval = CONNECTION_RETRY_INTERVAL;
 
         // TODO: handle multiple devices (currently we just take the first one)
-        const device = devices[0];
-        this.log.info(`Connecting to ${device.alias} (${device.sn})`);
-        await this.createDeviceObjects(device);
-        await this.pollDevice(device);
+        this.device = devices[0];
+        this.log.info(`Connecting to ${this.device.alias} (${this.device.sn})`);
+        await this.createDeviceObjects(this.device);
+        this.subscribeToDevice(this.device);
+        await this.pollDevice(this.device);
         this.pollingInterval = this.setInterval(async () => {
-            this.pollDevice(device);
+            this.pollDevice(this.device);
         }, POLLING_INTERVAL);
     }
 
@@ -296,6 +341,44 @@ class Anthbot extends utils.Adapter {
             },
             native: {},
         });
+
+        // Command buttons
+        await this.setObjectNotExistsAsync(`${device.sn}.command.start`, {
+            type: 'state',
+            common: {
+                name: 'start',
+                type: 'boolean',
+                role: 'button.start',
+                desc: 'Start',
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync(`${device.sn}.command.stop`, {
+            type: 'state',
+            common: {
+                name: 'stop',
+                type: 'boolean',
+                role: 'button.stop',
+                desc: 'Stop',
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync(`${device.sn}.command.home`, {
+            type: 'state',
+            common: {
+                name: 'home',
+                type: 'boolean',
+                role: 'button',
+                desc: 'Return home/start charging',
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
     }
 
     // Helper function to set shadow state values
@@ -321,6 +404,11 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.last_code_type`, { val: lastCode.code_type, ack: true });
     }
 
+    subscribeToDevice(device) {
+        this.log.debug(`Subscribing to command states for ${device.sn}`);
+        this.subscribeStates(`${device.sn}.command.*`);
+    }
+
     /**
      * Is called when adapter shuts down - callback has to be called under any circumstances!
      *
@@ -328,6 +416,7 @@ class Anthbot extends utils.Adapter {
      */
     onUnload(callback) {
         try {
+            this.unsubscribeStates('*');
             this.clearPolling();
             this.setConnected(false).then(() => {
                 callback();
