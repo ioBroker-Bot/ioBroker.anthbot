@@ -169,6 +169,16 @@ class Anthbot extends utils.Adapter {
         this.log.info(`Connecting to ${this.device.alias} (${this.device.sn})`);
         await this.createDeviceObjects(this.device);
         this.subscribeToDevice(this.device);
+
+        // TODO: figure out how to tell when map changes and reload periodically?
+        const deviceMap = await this.client.asyncGetDeviceMap(this.device.sn);
+        const areaSetting = deviceMap['area_setting.json'];
+        this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
+        this.setZoneInfo(this.device, areaSetting);
+
+        const timeSetting = deviceMap['time_setting.json'];
+        this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
+
         await this.pollDevice(this.device);
         this.pollingInterval = this.setInterval(async () => {
             this.pollDevice(this.device);
@@ -342,6 +352,19 @@ class Anthbot extends utils.Adapter {
             native: {},
         });
 
+        await this.setObjectNotExistsAsync(`${device.sn}.zone_info`, {
+            type: 'state',
+            common: {
+                name: 'zone_info',
+                type: 'string',
+                role: 'json',
+                desc: 'JSON object with zone information',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
         // Command buttons
         await this.setObjectNotExistsAsync(`${device.sn}.command.start`, {
             type: 'state',
@@ -382,7 +405,7 @@ class Anthbot extends utils.Adapter {
     }
 
     // Helper function to set shadow state values
-    async setShadowState(device, shadowState) {
+    setShadowState(device, shadowState) {
         if (shadowState.online.value) {
             this.setConnected(true);
         } else {
@@ -397,11 +420,25 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.rtk_state`, { val: shadowState.rtk.state == 1, ack: true });
     }
 
-    async setCodeList(device, codeList) {
+    setCodeList(device, codeList) {
         const lastCode = codeList[0];
         this.setStateChanged(`${device.sn}.last_code`, { val: lastCode.code, ack: true });
         this.setStateChanged(`${device.sn}.last_code_text`, { val: lastCode.event_message, ack: true });
         this.setStateChanged(`${device.sn}.last_code_type`, { val: lastCode.code_type, ack: true });
+    }
+
+    setZoneInfo(device, areaSetting) {
+        const zoneInfo = areaSetting?.content?.custom_areas;
+
+        // Remove the vertex information as we can't use that right now and it can be large
+        if (Array.isArray(zoneInfo)) {
+            for (const zone of zoneInfo) {
+                delete zone.vertexs;
+            }
+        }
+
+        this.log.debug(`zone_info for ${device.sn}: ${JSON.stringify(zoneInfo)}`);
+        this.setStateChanged(`${device.sn}.zone_info`, { val: zoneInfo, ack: true });
     }
 
     subscribeToDevice(device) {
