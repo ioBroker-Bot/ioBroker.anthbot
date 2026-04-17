@@ -28,6 +28,7 @@ class Anthbot extends utils.Adapter {
         this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
+        /** @type {{ sn: string; alias:  string; [zoneList]: string}|null} */ this.device = null;
         this.client = null;
         this.pollingInterval = null;
         this.retryTimer = null;
@@ -66,7 +67,7 @@ class Anthbot extends utils.Adapter {
             if (state.ack === false) {
                 // This is a command from the user (e.g., from the UI or other adapter)
                 // and should be processed by the adapter
-                this.log.debug(`User command received for ${id}: ${state.val}`);
+                this.log.debug(`Command received for ${id}: ${JSON.stringify(state)}`);
 
                 if (!this.client) {
                     this.log.warn('No API client!');
@@ -77,16 +78,49 @@ class Anthbot extends utils.Adapter {
                     const serialNumber = idParts.pop();
 
                     switch (command) {
-                        case 'start':
+                        case 'start': {
                             await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
                             await this.client.asyncSendServiceCommand(serialNumber, 'mow_start', 1);
                             break;
-                        case 'stop':
+                        }
+                        case 'stop': {
                             await this.client.asyncSendServiceCommand(serialNumber, 'stop_all_tasks', 1);
+                            // Ack command
+                            await this.setState(id, state, true);
                             break;
-                        case 'home':
+                        }
+                        case 'home': {
                             await this.client.asyncSendServiceCommand(serialNumber, 'charge_start', 1);
                             break;
+                        }
+                        case 'zone_list': {
+                            // This will affect the next start command only.
+                            let zoneList;
+                            if (state.val !== '') {
+                                // Some kind of non-blank value given
+                                try {
+                                    zoneList = JSON.parse(state.val);
+                                } catch (error) {
+                                    this.log.error(`Failed to parse/ack zone list for ${id}: ${error.message}`);
+                                }
+
+                                // Make sure all IDs in list are valid
+                                if (!this.isGoodZoneList(this.device, zoneList)) {
+                                    // Set to null so we don't ack it
+                                    zoneList = null;
+                                }
+                            } else {
+                                // No value given, so ack an empty list
+                                zoneList = [];
+                            }
+
+                            // Ack it if we now have a list
+                            if (Array.isArray(zoneList)) {
+                                await this.setState(id, JSON.stringify(zoneList), true);
+                            }
+
+                            break;
+                        }
                         default:
                             this.log.warn(`Unknown command: ${command}`);
                     }
@@ -171,12 +205,13 @@ class Anthbot extends utils.Adapter {
         this.subscribeToDevice(this.device);
 
         // TODO: figure out how to tell when map changes and reload periodically?
-        const deviceMap = await this.client.asyncGetDeviceMap(this.device.sn);
-        const areaSetting = deviceMap['area_setting.json'];
-        this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
-        this.setZoneInfo(this.device, areaSetting);
+        const deviceMapFiles = await this.client.asyncGetDeviceMap(this.device.sn);
 
-        const timeSetting = deviceMap['time_setting.json'];
+        const areaSetting = deviceMapFiles['area_setting.json'];
+        this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
+        this.setZoneInfo(this.device, areaSetting?.content?.custom_areas);
+
+        const timeSetting = deviceMapFiles['time_setting.json'];
         this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
 
         await this.pollDevice(this.device);
@@ -402,6 +437,18 @@ class Anthbot extends utils.Adapter {
             },
             native: {},
         });
+        await this.setObjectNotExistsAsync(`${device.sn}.command.zone_list`, {
+            type: 'state',
+            common: {
+                name: 'zone_list',
+                type: 'array',
+                role: 'info.ids',
+                desc: `Zone list for next command (array of zone IDs, e.g. '[101,120,132]')`,
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
     }
 
     // Helper function to set shadow state values
@@ -427,9 +474,35 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.last_code_type`, { val: lastCode.code_type, ack: true });
     }
 
-    setZoneInfo(device, areaSetting) {
-        const zoneInfo = areaSetting?.content?.custom_areas;
+    isGoodZoneList(device, zoneList) {
+        // List to check must be an array
+        if (!Array.isArray(zoneList)) {
+            this.log.error(`Invalid zone list: not an array`);
+            return false;
+        }
 
+        // If we don't even have zones for our device any list is bad
+        if (!device.zoneList) {
+            this.log.error('Invalid zone list: device has no zone info');
+            return false;
+        }
+
+        // Each zone in array must be a known zone ID
+        checkZone: for (const zoneId of zoneList) {
+            for (const zone of device.zoneList) {
+                if (zone.id === zoneId) {
+                    continue checkZone;
+                }
+            }
+            // If we didn't continue, then we didn't find the zoneId in our info list, so it's not good
+            this.log.error(`Invalid zone list: ${zoneId} not found in device info`);
+            return false;
+        }
+
+        return true;
+    }
+
+    setZoneInfo(device, zoneInfo) {
         // Remove the vertex information as we can't use that right now and it can be large
         if (Array.isArray(zoneInfo)) {
             for (const zone of zoneInfo) {
@@ -438,7 +511,12 @@ class Anthbot extends utils.Adapter {
         }
 
         this.log.debug(`zone_info for ${device.sn}: ${JSON.stringify(zoneInfo)}`);
-        this.setStateChanged(`${device.sn}.zone_info`, { val: zoneInfo, ack: true });
+
+        // Stash in the passed device
+        device.zoneList = zoneInfo;
+
+        // And save the state
+        this.setStateChanged(`${device.sn}.zone_info`, { val: JSON.stringify(zoneInfo), ack: true });
     }
 
     subscribeToDevice(device) {
