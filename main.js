@@ -28,7 +28,7 @@ class Anthbot extends utils.Adapter {
         this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
-        /** @type {{ sn: string; alias:  string; [zoneList]: string}|null} */ this.device = null;
+        /** @type {Array<{ sn: string; alias:  string; [zoneList]: string}>} */ this.devices = [];
         this.client = null;
         this.pollingInterval = null;
         this.retryTimer = null;
@@ -64,48 +64,80 @@ class Anthbot extends utils.Adapter {
      */
     async onStateChange(id, state) {
         if (state) {
-            if (state.ack === false) {
+            if (this.checkClient() && state.ack === false) {
                 // This is a command from the user (e.g., from the UI or other adapter)
                 // and should be processed by the adapter
                 this.log.debug(`Command received for ${id}: ${JSON.stringify(state)}`);
 
-                if (!this.client) {
-                    this.log.warn('No API client!');
-                } else {
-                    const idParts = id.split('.');
-                    const command = idParts.pop();
-                    idParts.pop(); // Remove 'command' part
-                    const serialNumber = idParts.pop();
+                // By default, set ackState null so we won't ack this
+                let ackState = null;
+                // By default sync afer valid command
+                let doSync = true;
 
+                const idParts = id.split('.');
+
+                const command = idParts.pop();
+
+                // Remove 'command' string literal
+                idParts.pop();
+
+                const serialNumber = idParts.pop();
+                const device = this.devices.find(checkDevice => checkDevice.sn === serialNumber);
+
+                if (!device) {
+                    this.log.error(`Could not find device for command with serial number: ${serialNumber}`);
+                } else {
                     switch (command) {
-                        case 'start': {
-                            await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
-                            await this.client.asyncSendServiceCommand(serialNumber, 'mow_start', 1);
+                        case 'custom_area_mow_start': {
+                            // Get/check command zone_list
+                            // This could be done in one shot, but get the state first for debug logging
+                            const command_zone_list_state = await this.getStateAsync(`${device.sn}.command.zone_list`);
+                            this.log.debug(
+                                `Current command.zone_list state: ${JSON.stringify(command_zone_list_state)}`,
+                            );
+
+                            let command_zone_list;
+                            if (command_zone_list_state && command_zone_list_state.val) {
+                                try {
+                                    command_zone_list = JSON.parse(command_zone_list_state.val);
+                                } catch (error) {
+                                    this.log.error(
+                                        `Failed to parse command zone list for ${serialNumber}: ${error.message}`,
+                                    );
+                                }
+                            }
+
+                            if (Array.isArray(command_zone_list) && command_zone_list.length > 0) {
+                                if (!this.isGoodZoneList(device, command_zone_list)) {
+                                    this.log.error(
+                                        'Cannot start custom_area_mow_start due to invalid command.zone_list',
+                                    );
+                                } else {
+                                    this.log.info(
+                                        `${device.alias}: custom_area_mow_start ${JSON.stringify(command_zone_list)}`,
+                                    );
+                                    await this.client.asyncSendServiceCommand(serialNumber, 'custom_area_mow_start', {
+                                        id: command_zone_list,
+                                    });
+                                    ackState = true;
+                                }
+                            }
                             break;
                         }
-                        case 'stop': {
-                            await this.client.asyncSendServiceCommand(serialNumber, 'stop_all_tasks', 1);
-                            // Ack command
-                            await this.setState(id, state, true);
-                            break;
-                        }
-                        case 'home': {
-                            await this.client.asyncSendServiceCommand(serialNumber, 'charge_start', 1);
-                            break;
-                        }
+
                         case 'zone_list': {
                             // This will affect the next start command only.
-                            let zoneList;
+                            let j;
                             if (state.val !== '') {
                                 // Some kind of non-blank value given
                                 try {
                                     zoneList = JSON.parse(state.val);
                                 } catch (error) {
-                                    this.log.error(`Failed to parse/ack zone list for ${id}: ${error.message}`);
+                                    this.log.error(`Failed to parse zone list for ${id}: ${error.message}`);
                                 }
 
                                 // Make sure all IDs in list are valid
-                                if (!this.isGoodZoneList(this.device, zoneList)) {
+                                if (!this.isGoodZoneList(device, zoneList)) {
                                     // Set to null so we don't ack it
                                     zoneList = null;
                                 }
@@ -114,21 +146,50 @@ class Anthbot extends utils.Adapter {
                                 zoneList = [];
                             }
 
-                            // Ack it if we now have a list
+                            // Ack only if we now have a list
                             if (Array.isArray(zoneList)) {
-                                await this.setState(id, JSON.stringify(zoneList), true);
+                                ackState = JSON.stringify(zoneList);
+                                // We don't need to sync after this as no command was actually sent yet
+                                doSync = false;
                             }
 
                             break;
                         }
+
+                        case 'mow_start':
+                            // To start mowing have to put app_state first.
+                            await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
+                        // Purposfully fall through to send the actual command!
+
+                        // Generic one-shot commands
+                        /* falls through */
+                        case 'charge_start':
+                        case 'mow_pause':
+                        case 'stop_all_tasks': {
+                            this.log.info(`${device.alias}: ${command}`);
+                            await this.client.asyncSendServiceCommand(serialNumber, command, 1);
+                            ackState = true;
+                            break;
+                        }
+
                         default:
                             this.log.warn(`Unknown command: ${command}`);
+                    }
+                }
+
+                // Ack command if verified valid above
+                if (ackState) {
+                    await this.setState(id, ackState, true);
+
+                    // Sync device if no explicitally set not to
+                    if (doSync) {
+                        this.syncDevice(device);
                     }
                 }
             }
         } else {
             // The object was deleted or the state value has expired
-            this.log.info(`state ${id} deleted`);
+            this.log.warn(`state ${id} deleted`);
         }
     }
 
@@ -179,17 +240,17 @@ class Anthbot extends utils.Adapter {
         this.log.debug('Login successful');
 
         this.log.debug('Searching for bound devices...');
-        let devices = null;
+        this.devices = [];
         try {
-            devices = await this.client.asyncGetBoundDevices();
+            this.devices = await this.client.asyncGetBoundDevices();
         } catch (error) {
             this.log.error(`Failed to fetch bound devices: ${error.message}`);
             await this.retryConnection();
             return;
         }
-        this.log.debug(`Found devices: ${JSON.stringify(devices)}`);
+        this.log.debug(`Found devices: ${JSON.stringify(this.devices)}`);
 
-        if (devices.length === 0) {
+        if (this.devices.length === 0) {
             this.log.error('No bound devices found! Please check your Anthbot cloud account.');
             await this.retryConnection();
             return;
@@ -198,26 +259,39 @@ class Anthbot extends utils.Adapter {
         // Things look pretty good here, so reset the retry interval.
         this.currentRetryInterval = CONNECTION_RETRY_INTERVAL;
 
-        // TODO: handle multiple devices (currently we just take the first one)
-        this.device = devices[0];
-        this.log.info(`Connecting to ${this.device.alias} (${this.device.sn})`);
-        await this.createDeviceObjects(this.device);
-        this.subscribeToDevice(this.device);
+        // TODO: handle multiple devices (currently we just connect to the first one)
+        const device = this.devices[0];
+        this.log.info(`Connecting to ${device.alias} (${device.sn})`);
+        await this.createDeviceObjects(device);
+        this.subscribeToDevice(device);
 
-        // TODO: figure out how to tell when map changes and reload periodically?
-        const deviceMapFiles = await this.client.asyncGetDeviceMap(this.device.sn);
+        this.syncDevice(device);
+    }
 
-        const areaSetting = deviceMapFiles['area_setting.json'];
-        this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
-        this.setZoneInfo(this.device, areaSetting?.content?.custom_areas);
+    async syncDevice(device) {
+        if (this.checkClient()) {
+            // Reset polling interval on sync
+            this.clearPolling();
 
-        const timeSetting = deviceMapFiles['time_setting.json'];
-        this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
+            await this.client.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
+            // Wait a second for their backend
+            await new Promise(resolve => this.setTimeout(resolve, 1000));
 
-        await this.pollDevice(this.device);
-        this.pollingInterval = this.setInterval(async () => {
-            this.pollDevice(this.device);
-        }, POLLING_INTERVAL);
+            // TODO: figure out how to tell when map changes and reload periodically?
+            const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
+
+            const areaSetting = deviceMapFiles['area_setting.json'];
+            this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
+            this.setZoneInfo(device, areaSetting?.content?.custom_areas);
+
+            const timeSetting = deviceMapFiles['time_setting.json'];
+            this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
+
+            await this.pollDevice(device);
+            this.pollingInterval = this.setInterval(async () => {
+                this.pollDevice(device);
+            }, POLLING_INTERVAL);
+        }
     }
 
     clearPolling() {
@@ -227,12 +301,18 @@ class Anthbot extends utils.Adapter {
         }
     }
 
+    checkClient() {
+        if (!this.client) {
+            this.log.warn('No API client available!');
+            this.retryConnection();
+            return false;
+        }
+        return true;
+    }
+
     // Poll device
     async pollDevice(device) {
-        if (!this.client) {
-            this.log.warn('No API client available for poll!');
-            this.retryConnection();
-        } else {
+        if (this.checkClient()) {
             try {
                 const shadowState = await this.client.asyncGetShadowReportedState(device.sn);
                 this.log.debug(`Device shadow reported state:\n${JSON.stringify(shadowState)}`);
@@ -401,19 +481,31 @@ class Anthbot extends utils.Adapter {
         });
 
         // Command buttons
-        await this.setObjectNotExistsAsync(`${device.sn}.command.start`, {
+        await this.setObjectNotExistsAsync(`${device.sn}.command.custom_area_mow_start`, {
             type: 'state',
             common: {
                 name: 'start',
                 type: 'boolean',
                 role: 'button.start',
-                desc: 'Start',
+                desc: 'Start zone mowing',
                 read: false,
                 write: true,
             },
             native: {},
         });
-        await this.setObjectNotExistsAsync(`${device.sn}.command.stop`, {
+        await this.setObjectNotExistsAsync(`${device.sn}.command.mow_start`, {
+            type: 'state',
+            common: {
+                name: 'start',
+                type: 'boolean',
+                role: 'button.start',
+                desc: 'Start global mowing',
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync(`${device.sn}.command.stop_all_tasks`, {
             type: 'state',
             common: {
                 name: 'stop',
@@ -425,7 +517,19 @@ class Anthbot extends utils.Adapter {
             },
             native: {},
         });
-        await this.setObjectNotExistsAsync(`${device.sn}.command.home`, {
+        await this.setObjectNotExistsAsync(`${device.sn}.command.mow_pause`, {
+            type: 'state',
+            common: {
+                name: 'pause',
+                type: 'boolean',
+                role: 'button.pause',
+                desc: 'Pause',
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
+        await this.setObjectNotExistsAsync(`${device.sn}.command.charge_start`, {
             type: 'state',
             common: {
                 name: 'home',
