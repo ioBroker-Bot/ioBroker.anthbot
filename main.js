@@ -28,7 +28,7 @@ class Anthbot extends utils.Adapter {
         this.on('stateChange', this.onStateChange.bind(this));
         this.on('unload', this.onUnload.bind(this));
 
-        /** @type {Array<{ sn: string; alias:  string; [zoneList]: string}>} */ this.devices = [];
+        this.devices = [];
         this.client = null;
         this.pollingInterval = null;
         this.retryTimer = null;
@@ -88,6 +88,32 @@ class Anthbot extends utils.Adapter {
                     this.log.error(`Could not find device for command with serial number: ${serialNumber}`);
                 } else {
                     switch (command) {
+                        case 'area_set': {
+                            let customAreas;
+                            if (typeof state?.val !== 'string') {
+                                this.log.error('Command custom_areas for ${serialNumber} is not a string');
+                            } else {
+                                try {
+                                    customAreas = JSON.parse(state.val);
+                                } catch (error) {
+                                    this.log.error(`Failed to parse for ${id}: ${error.message}`);
+                                }
+                            }
+
+                            // Custom areas needs to be an array of zones, and they need to be valid
+                            if (this.checkCustomAreas(customAreas)) {
+                                // Write the given area (zone) data
+                                this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
+                                await this.client.asyncSendServiceCommand(serialNumber, 'area_set', {
+                                    custom_areas: customAreas,
+                                });
+
+                                ackState = JSON.stringify(customAreas);
+                            }
+
+                            break;
+                        }
+
                         case 'custom_area_mow_start': {
                             // Get/check command zone_list
                             // This could be done in one shot, but get the state first for debug logging
@@ -97,7 +123,9 @@ class Anthbot extends utils.Adapter {
                             );
 
                             let command_zone_list;
-                            if (command_zone_list_state && command_zone_list_state.val) {
+                            if (typeof command_zone_list_state?.val !== 'string') {
+                                this.log.error('Command zone list for ${serialNumber} is not a string');
+                            } else {
                                 try {
                                     command_zone_list = JSON.parse(command_zone_list_state.val);
                                 } catch (error) {
@@ -126,9 +154,9 @@ class Anthbot extends utils.Adapter {
                         }
 
                         case 'zone_list': {
+                            let zoneList;
                             // This will affect the next start command only.
-                            let j;
-                            if (state.val !== '') {
+                            if (typeof state?.val === 'string' && state.val !== '') {
                                 // Some kind of non-blank value given
                                 try {
                                     zoneList = JSON.parse(state.val);
@@ -275,7 +303,7 @@ class Anthbot extends utils.Adapter {
 
             await this.client.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
             // Wait a second for their backend
-            await new Promise(resolve => this.setTimeout(resolve, 1000));
+            await new Promise(resolve => this.setTimeout(resolve, 1000, null));
 
             // TODO: figure out how to tell when map changes and reload periodically?
             const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
@@ -301,8 +329,11 @@ class Anthbot extends utils.Adapter {
         }
     }
 
+    /**
+     * @returns {this is { client: { Object } }} this.client is an object
+     */
     checkClient() {
-        if (!this.client) {
+        if (!this.client || typeof this.client !== 'object') {
             this.log.warn('No API client available!');
             this.retryConnection();
             return false;
@@ -541,6 +572,8 @@ class Anthbot extends utils.Adapter {
             },
             native: {},
         });
+
+        // Zone list for relevant commands
         await this.setObjectNotExistsAsync(`${device.sn}.command.zone_list`, {
             type: 'state',
             common: {
@@ -548,6 +581,20 @@ class Anthbot extends utils.Adapter {
                 type: 'array',
                 role: 'info.ids',
                 desc: `Zone list for next command (array of zone IDs, e.g. '[101,120,132]')`,
+                read: false,
+                write: true,
+            },
+            native: {},
+        });
+
+        // For 'area_set'
+        await this.setObjectNotExistsAsync(`${device.sn}.command.area_set`, {
+            type: 'state',
+            common: {
+                name: 'area_set',
+                type: 'string',
+                role: 'json',
+                desc: 'JSON object with zone information to write',
                 read: false,
                 write: true,
             },
@@ -576,6 +623,42 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.last_code`, { val: lastCode.code, ack: true });
         this.setStateChanged(`${device.sn}.last_code_text`, { val: lastCode.event_message, ack: true });
         this.setStateChanged(`${device.sn}.last_code_type`, { val: lastCode.code_type, ack: true });
+    }
+
+    checkCustomAreas(customAreas) {
+        if (!Array.isArray(customAreas)) {
+            this.log.error(`Invalid customAreas: not an array`);
+            return false;
+        }
+
+        for (const area of customAreas) {
+            // Must have ID & name (I'm guessing)
+            if (typeof area.id !== 'number' || typeof area.name !== 'string') {
+                this.log.error('Invalid custom area: id or name are bad/missing');
+                return false;
+            }
+
+            // vertexs must be an array of 4 co-ordinates or the Anthbot app will crash!
+            if (Array.isArray(area.vertexs) || area.vertexs.length != 4) {
+                this.log.error('Invalid custom area: vertexs is not an array of 4 items');
+                return false;
+            }
+
+            for (const vertex of area.vertexs) {
+                if (
+                    !Array.isArray(vertex) ||
+                    vertex.length != 2 ||
+                    typeof vertex[0] !== 'number' ||
+                    typeof vertex[1] !== 'number'
+                ) {
+                    this.log.error('Invalid custom area: vertex is not a co-ordinate');
+                    return false;
+                }
+            }
+        }
+
+        // Everything must be good
+        return true;
     }
 
     isGoodZoneList(device, zoneList) {
@@ -607,13 +690,6 @@ class Anthbot extends utils.Adapter {
     }
 
     setZoneInfo(device, zoneInfo) {
-        // Remove the vertex information as we can't use that right now and it can be large
-        if (Array.isArray(zoneInfo)) {
-            for (const zone of zoneInfo) {
-                delete zone.vertexs;
-            }
-        }
-
         this.log.debug(`zone_info for ${device.sn}: ${JSON.stringify(zoneInfo)}`);
 
         // Stash in the passed device
