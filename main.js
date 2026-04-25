@@ -50,7 +50,7 @@ class Anthbot extends utils.Adapter {
         // Verify we have credentials
         if (this.config.username == '' || this.config.password == '' || !this.config.regionCode) {
             this.log.error('Incomplete adapter configuration! Please check settings.');
-            this.terminate();
+            // Don't actually terminate - when the adapter config is updated that will trigger a restart
         } else {
             this.loginAndStart();
         }
