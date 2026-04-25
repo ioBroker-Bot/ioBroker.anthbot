@@ -14,7 +14,8 @@
     "mower",
     "IoT",
     "Anthbot",
-    "lawn"
+    "lawn",
+    "ioBroker"
   ],
   "repository": {
     "type": "git",
