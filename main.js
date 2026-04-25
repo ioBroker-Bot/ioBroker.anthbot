@@ -100,12 +100,19 @@ class Anthbot extends utils.Adapter {
                                 }
                             }
 
-                            // Custom areas needs to be an array of zones, and they need to be valid
-                            if (this.checkCustomAreas(customAreas)) {
+                            // Overlay elements from the state onto existing zones so user only has to set
+                            // the items they are changing and rest will be preserved.
+
+                            // Variable named to match asyncSendServiceCommand data
+                            const custom_areas = this.validateCustomAreas(device, customAreas);
+
+                            if (!custom_areas) {
+                                this.log.error(`Bad area data in ${id}`);
+                            } else {
                                 // Write the given area (zone) data
                                 this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
                                 await this.client.asyncSendServiceCommand(serialNumber, 'area_set', {
-                                    custom_areas: customAreas,
+                                    custom_areas,
                                 });
 
                                 ackState = JSON.stringify(customAreas);
@@ -625,40 +632,63 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.last_code_type`, { val: lastCode.code_type, ack: true });
     }
 
-    checkCustomAreas(customAreas) {
+    validateCustomAreas(device, customAreas) {
+        const outputAreas = [];
+
         if (!Array.isArray(customAreas)) {
             this.log.error(`Invalid customAreas: not an array`);
-            return false;
-        }
+        } else {
+            for (const area of customAreas) {
+                let outArea;
 
-        for (const area of customAreas) {
-            // Must have ID & name (I'm guessing)
-            if (typeof area.id !== 'number' || typeof area.name !== 'string') {
-                this.log.error('Invalid custom area: id or name are bad/missing');
-                return false;
-            }
-
-            // vertexs must be an array of 4 co-ordinates or the Anthbot app will crash!
-            if (Array.isArray(area.vertexs) || area.vertexs.length != 4) {
-                this.log.error('Invalid custom area: vertexs is not an array of 4 items');
-                return false;
-            }
-
-            for (const vertex of area.vertexs) {
-                if (
-                    !Array.isArray(vertex) ||
-                    vertex.length != 2 ||
-                    typeof vertex[0] !== 'number' ||
-                    typeof vertex[1] !== 'number'
-                ) {
-                    this.log.error('Invalid custom area: vertex is not a co-ordinate');
-                    return false;
+                const existingArea = device.zoneList.find(zone => zone.id === area.id);
+                if (existingArea) {
+                    this.log.debug(`Found existing area ${area.id} for merge: ${JSON.stringify(existingArea)}`);
+                    outArea = { ...existingArea, ...area };
+                    this.log.debug(`After merge ${area.id} is: ${JSON.stringify(outArea)}`);
+                } else {
+                    outArea = area;
                 }
+
+                // Assume area is good
+                let isGood = true;
+                if (typeof outArea.id !== 'number' || typeof outArea.name !== 'string') {
+                    // Must have ID & name (I'm guessing)
+                    this.log.error('Invalid custom area: id or name are bad/missing');
+                    isGood = false;
+                } else if (!Array.isArray(outArea.vertexs) || outArea.vertexs.length != 4) {
+                    // vertexs must be an array of 4 co-ordinates or the Anthbot app will crash!
+                    this.log.error('Invalid custom area: vertexs is not an array of 4 items');
+                    isGood = false;
+                } else {
+                    let goodVertexs = 0;
+                    for (const vertex of outArea.vertexs) {
+                        if (
+                            !Array.isArray(vertex) ||
+                            vertex.length != 2 ||
+                            typeof vertex[0] !== 'number' ||
+                            typeof vertex[1] !== 'number'
+                        ) {
+                            this.log.error('Invalid custom area: vertex is not a co-ordinate');
+                            break;
+                        } else {
+                            goodVertexs++;
+                        }
+                    }
+                    if (goodVertexs != 4) {
+                        isGood = false;
+                    }
+                }
+
+                if (!isGood) {
+                    // Something wrong with this area so return nothing
+                    return;
+                }
+                outputAreas.push(outArea);
             }
         }
 
-        // Everything must be good
-        return true;
+        return outputAreas;
     }
 
     isGoodZoneList(device, zoneList) {
