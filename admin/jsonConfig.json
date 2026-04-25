@@ -5,12 +5,22 @@
         "username": {
             "type": "text",
             "label": "Username",
-            "newLine": true
+            "newLine": true,
+            "xs": 12,
+            "sm": 12,
+            "md": 12,
+            "lg": 9,
+            "xl": 6
         },
         "password": {
             "type": "password",
             "label": "Password",
-            "newLine": true
+            "newLine": true,
+            "xs": 12,
+            "sm": 12,
+            "md": 12,
+            "lg": 9,
+            "xl": 6
         },
         "regionCode": {
             "type": "select",
@@ -53,7 +63,12 @@
                 { "value": 380, "label": "Ukraine" },
                 { "value": 971, "label": "United Arab Emirates" },
                 { "value": 44, "label": "United Kingdom" }
-            ]
+            ],
+            "xs": 12,
+            "sm": 12,
+            "md": 12,
+            "lg": 9,
+            "xl": 6
         }
     }
 }
