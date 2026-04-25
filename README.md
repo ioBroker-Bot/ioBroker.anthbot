@@ -21,7 +21,7 @@ Connect with Anthbot devices such as their robot mowers.
 -->
 
 ### **WORK IN PROGRESS**
-* (Robin Rainton) initial release.
+* (raintonr) initial release
 
 ## License
 MIT License
