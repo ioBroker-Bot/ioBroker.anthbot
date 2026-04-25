@@ -1,99 +1,107 @@
 {
-    "common": {
-        "name": "anthbot",
-        "version": "0.0.1",
-        "news": {
-            "0.0.1": {
-                "en": "initial release",
-                "de": "Erstveröffentlichung",
-                "ru": "Начальная версия",
-                "pt": "lançamento inicial",
-                "nl": "Eerste uitgave",
-                "fr": "Première version",
-                "it": "Versione iniziale",
-                "es": "Versión inicial",
-                "pl": "Pierwsze wydanie",
-                "uk": "Початкова версія",
-                "zh-cn": "首次出版"
-            }
-        },
-        "titleLang": {
-            "en": "Anthbot",
-            "de": "Anthbot",
-            "ru": "Антбот",
-            "pt": "Antobô",
-            "nl": "Antbot",
-            "fr": "Anthbot",
-            "it": "Antbot",
-            "es": "Antbot",
-            "pl": "Anthbot",
-            "uk": "Anthbot",
-            "zh-cn": "蚂蚁机器人"
-        },
-        "desc": {
-            "en": "Connect with Anthbot devices such as their robot mowers",
-            "de": "Verbinden Sie sich mit Anthbot-Geräten wie den Mährobotern",
-            "ru": "Подключайтесь к устройствам Anthbot, например к их роботам-косилкам.",
-            "pt": "Conecte-se com dispositivos Anthbot, como seus robôs cortadores",
-            "nl": "Maak verbinding met Anthbot-apparaten zoals hun robotmaaiers",
-            "fr": "Connectez-vous aux appareils Anthbot tels que leurs robots tondeuses",
-            "it": "Connettiti con i dispositivi Anthbot come i robot rasaerba",
-            "es": "Conéctese con dispositivos Anthbot como sus robots cortacésped",
-            "pl": "Połącz się z urządzeniami Anthbot, takimi jak kosiarki automatyczne",
-            "uk": "Підключайтеся до пристроїв Anthbot, наприклад до їхніх роботів-косарок",
-            "zh-cn": "与 Anthbot 设备连接，例如机器人割草机"
-        },
-        "authors": ["Robin Rainton <robin@rainton.com>"],
-        "keywords": ["robot", "mower", "IoT", "Anthbot", "lawn"],
-        "licenseInformation": {
-            "type": "free",
-            "license": "MIT"
-        },
-        "platform": "Javascript/Node.js",
-        "icon": "anthbot.png",
-        "enabled": true,
-        "extIcon": "https://raw.githubusercontent.com/raintonr/ioBroker.anthbot/main/admin/anthbot.png",
-        "readme": "https://github.com/raintonr/ioBroker.anthbot/blob/main/README.md",
-        "loglevel": "info",
-        "tier": 3,
-        "mode": "daemon",
-        "type": "garden",
-        "compact": true,
-        "connectionType": "cloud",
-        "dataSource": "poll",
-        "adminUI": {
-            "config": "json"
-        },
-        "dependencies": [
-            {
-                "js-controller": ">=6.0.11"
-            }
-        ],
-        "globalDependencies": [
-            {
-                "admin": ">=7.0.23"
-            }
-        ]
+  "common": {
+    "name": "anthbot",
+    "version": "0.0.1",
+    "news": {
+      "0.0.1": {
+        "en": "initial release",
+        "de": "Erstveröffentlichung",
+        "ru": "Начальная версия",
+        "pt": "lançamento inicial",
+        "nl": "Eerste uitgave",
+        "fr": "Première version",
+        "it": "Versione iniziale",
+        "es": "Versión inicial",
+        "pl": "Pierwsze wydanie",
+        "uk": "Початкова версія",
+        "zh-cn": "首次出版"
+      }
     },
-    "native": {
-        "username": "",
-        "password": "",
-        "regionCode": null
+    "titleLang": {
+      "en": "Anthbot",
+      "de": "Anthbot",
+      "ru": "Антбот",
+      "pt": "Antobô",
+      "nl": "Antbot",
+      "fr": "Anthbot",
+      "it": "Antbot",
+      "es": "Antbot",
+      "pl": "Anthbot",
+      "uk": "Anthbot",
+      "zh-cn": "蚂蚁机器人"
     },
-    "objects": [],
-    "instanceObjects": [
-        {
-            "_id": "info.connection",
-            "type": "state",
-            "common": {
-                "role": "indicator.connected",
-                "name": "Device is online",
-                "type": "boolean",
-                "read": true,
-                "write": false,
-                "def": false
-            },
-            "native": {}
-        }
+    "desc": {
+      "en": "Connect with Anthbot devices such as their robot mowers",
+      "de": "Verbinden Sie sich mit Anthbot-Geräten wie den Mährobotern",
+      "ru": "Подключайтесь к устройствам Anthbot, например к их роботам-косилкам.",
+      "pt": "Conecte-se com dispositivos Anthbot, como seus robôs cortadores",
+      "nl": "Maak verbinding met Anthbot-apparaten zoals hun robotmaaiers",
+      "fr": "Connectez-vous aux appareils Anthbot tels que leurs robots tondeuses",
+      "it": "Connettiti con i dispositivi Anthbot come i robot rasaerba",
+      "es": "Conéctese con dispositivos Anthbot como sus robots cortacésped",
+      "pl": "Połącz się z urządzeniami Anthbot, takimi jak kosiarki automatyczne",
+      "uk": "Підключайтеся до пристроїв Anthbot, наприклад до їхніх роботів-косарок",
+      "zh-cn": "与 Anthbot 设备连接，例如机器人割草机"
+    },
+    "authors": [
+      "Robin Rainton <robin@rainton.com>"
+    ],
+    "keywords": [
+      "robot",
+      "mower",
+      "IoT",
+      "Anthbot",
+      "lawn"
+    ],
+    "licenseInformation": {
+      "type": "free",
+      "license": "MIT"
+    },
+    "platform": "Javascript/Node.js",
+    "icon": "anthbot.png",
+    "enabled": true,
+    "extIcon": "https://raw.githubusercontent.com/raintonr/ioBroker.anthbot/main/admin/anthbot.png",
+    "readme": "https://github.com/raintonr/ioBroker.anthbot/blob/main/README.md",
+    "loglevel": "info",
+    "tier": 3,
+    "mode": "daemon",
+    "type": "garden",
+    "compact": true,
+    "connectionType": "cloud",
+    "dataSource": "poll",
+    "adminUI": {
+      "config": "json"
+    },
+    "dependencies": [
+      {
+        "js-controller": ">=6.0.11"
+      }
+    ],
+    "globalDependencies": [
+      {
+        "admin": ">=7.0.23"
+      }
     ]
+  },
+  "native": {
+    "username": "",
+    "password": "",
+    "regionCode": null
+  },
+  "objects": [],
+  "instanceObjects": [
+    {
+      "_id": "info.connection",
+      "type": "state",
+      "common": {
+        "role": "indicator.connected",
+        "name": "Device is online",
+        "type": "boolean",
+        "read": true,
+        "write": false,
+        "def": false
+      },
+      "native": {}
+    }
+  ]
 }
