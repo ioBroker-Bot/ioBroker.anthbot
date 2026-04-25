@@ -7,7 +7,7 @@
     "email": "robin@rainton.com"
   },
   "contributors": [],
-  "homepage": "https://github.com/raintonr/ioBroker.anthbot",
+  "homepage": "hhttps://github.com/iobroker-community-adapters/ioBroker.anthbot",
   "license": "MIT",
   "keywords": [
     "robot",
@@ -18,7 +18,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/raintonr/ioBroker.anthbot.git"
+    "url": "https://github.com/iobroker-community-adapters/ioBroker.anthbot.git"
   },
   "engines": {
     "node": ">= 20"
@@ -64,7 +64,7 @@
     "dev-server": "dev-server"
   },
   "bugs": {
-    "url": "https://github.com/raintonr/ioBroker.anthbot/issues"
+    "url": "https://github.com/iobroker-community-adapters/ioBroker.anthbot/issues"
   },
   "readmeFilename": "README.md"
 }

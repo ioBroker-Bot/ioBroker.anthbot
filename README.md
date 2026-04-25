@@ -8,7 +8,7 @@
 
 [![NPM](https://nodei.co/npm/iobroker.anthbot.png?downloads=true)](https://nodei.co/npm/iobroker.anthbot/)
 
-**Tests:** ![Test and Release](https://github.com/raintonr/ioBroker.anthbot/workflows/Test%20and%20Release/badge.svg)
+**Tests:** ![Test and Release](https://github.com/iobroker-community-adapters/ioBroker.anthbot/workflows/Test%20and%20Release/badge.svg)
 
 ## anthbot adapter for ioBroker
 
