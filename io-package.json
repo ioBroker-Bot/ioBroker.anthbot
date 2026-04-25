@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "news": {
+      "0.0.3": {
+        "en": "adapter checker issues",
+        "de": "adapter checker probleme",
+        "ru": "проблемы проверки адаптера",
+        "pt": "problemas com o verificador de adaptadores",
+        "nl": "problemen met de adaptercontrole",
+        "fr": "problèmes de vérification de l'adaptateur",
+        "it": "adattatore checker",
+        "es": "problemas de control de adaptador",
+        "pl": "problemy z sprawdzaniem adaptera",
+        "uk": "питання перевірки адаптера",
+        "zh-cn": "适配器检查器问题"
+      },
       "0.0.2": {
         "en": "initial release",
         "de": "Erstveröffentlichung",
