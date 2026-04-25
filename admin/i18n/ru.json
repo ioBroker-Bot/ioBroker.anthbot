@@ -1,5 +1,5 @@
 {
     "anthbot adapter settings": "Настройки адаптера для anthbot",
-    "option1": "вариант 1",
-    "option2": "вариант 2"
+    "password": "Пароль",
+    "username": "Имя пользователя"
 }
