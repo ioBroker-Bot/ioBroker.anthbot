@@ -82,143 +82,153 @@ class Anthbot extends utils.Adapter {
                 idParts.pop();
 
                 const serialNumber = idParts.pop();
-                const device = this.devices.find(checkDevice => checkDevice.sn === serialNumber);
-
-                if (!device) {
-                    this.log.error(`Could not find device for command with serial number: ${serialNumber}`);
+                if (!serialNumber) {
+                    this.log.error(`No serial number found in command ${id}`);
                 } else {
-                    switch (command) {
-                        case 'area_set': {
-                            let customAreas;
-                            if (typeof state?.val !== 'string') {
-                                this.log.error('Command custom_areas for ${serialNumber} is not a string');
-                            } else {
-                                try {
-                                    customAreas = JSON.parse(state.val);
-                                } catch (error) {
-                                    this.log.error(`Failed to parse for ${id}: ${error.message}`);
-                                }
-                            }
+                    const device = this.devices.find(checkDevice => checkDevice.sn === serialNumber);
 
-                            // Overlay elements from the state onto existing zones so user only has to set
-                            // the items they are changing and rest will be preserved.
-
-                            // Variable named to match asyncSendServiceCommand data
-                            const custom_areas = this.validateCustomAreas(device, customAreas);
-
-                            if (!custom_areas) {
-                                this.log.error(`Bad area data in ${id}`);
-                            } else {
-                                // Write the given area (zone) data
-                                this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
-                                await this.client.asyncSendServiceCommand(serialNumber, 'area_set', {
-                                    custom_areas,
-                                });
-
-                                ackState = JSON.stringify(customAreas);
-                            }
-
-                            break;
-                        }
-
-                        case 'custom_area_mow_start': {
-                            // Get/check command zone_list
-                            // This could be done in one shot, but get the state first for debug logging
-                            const command_zone_list_state = await this.getStateAsync(`${device.sn}.command.zone_list`);
-                            this.log.debug(
-                                `Current command.zone_list state: ${JSON.stringify(command_zone_list_state)}`,
-                            );
-
-                            let command_zone_list;
-                            if (typeof command_zone_list_state?.val !== 'string') {
-                                this.log.error('Command zone list for ${serialNumber} is not a string');
-                            } else {
-                                try {
-                                    command_zone_list = JSON.parse(command_zone_list_state.val);
-                                } catch (error) {
-                                    this.log.error(
-                                        `Failed to parse command zone list for ${serialNumber}: ${error.message}`,
-                                    );
-                                }
-                            }
-
-                            if (Array.isArray(command_zone_list) && command_zone_list.length > 0) {
-                                if (!this.isGoodZoneList(device, command_zone_list)) {
-                                    this.log.error(
-                                        'Cannot start custom_area_mow_start due to invalid command.zone_list',
-                                    );
+                    if (!serialNumber || !device) {
+                        this.log.error(`Could not find device for command with serial number: ${serialNumber}`);
+                    } else {
+                        switch (command) {
+                            case 'area_set': {
+                                let customAreas;
+                                if (typeof state?.val !== 'string') {
+                                    this.log.error('Command custom_areas for ${serialNumber} is not a string');
                                 } else {
-                                    this.log.info(
-                                        `${device.alias}: custom_area_mow_start ${JSON.stringify(command_zone_list)}`,
-                                    );
-                                    await this.client.asyncSendServiceCommand(serialNumber, 'custom_area_mow_start', {
-                                        id: command_zone_list,
+                                    try {
+                                        customAreas = JSON.parse(state.val);
+                                    } catch (error) {
+                                        this.log.error(`Failed to parse for ${id}: ${error.message}`);
+                                    }
+                                }
+
+                                // Overlay elements from the state onto existing zones so user only has to set
+                                // the items they are changing and rest will be preserved.
+
+                                // Variable named to match asyncSendServiceCommand data
+                                const custom_areas = this.validateCustomAreas(device, customAreas);
+
+                                if (!custom_areas) {
+                                    this.log.error(`Bad area data in ${id}`);
+                                } else {
+                                    // Write the given area (zone) data
+                                    this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
+                                    await this.client.asyncSendServiceCommand(serialNumber, 'area_set', {
+                                        custom_areas,
                                     });
-                                    ackState = true;
-                                }
-                            }
-                            break;
-                        }
 
-                        case 'zone_list': {
-                            let zoneList;
-                            // This will affect the next start command only.
-                            if (typeof state?.val === 'string' && state.val !== '') {
-                                // Some kind of non-blank value given
-                                try {
-                                    zoneList = JSON.parse(state.val);
-                                } catch (error) {
-                                    this.log.error(`Failed to parse zone list for ${id}: ${error.message}`);
+                                    ackState = JSON.stringify(customAreas);
                                 }
 
-                                // Make sure all IDs in list are valid
-                                if (!this.isGoodZoneList(device, zoneList)) {
-                                    // Set to null so we don't ack it
-                                    zoneList = null;
+                                break;
+                            }
+
+                            case 'custom_area_mow_start': {
+                                // Get/check command zone_list
+                                // This could be done in one shot, but get the state first for debug logging
+                                const command_zone_list_state = await this.getStateAsync(
+                                    `${device.sn}.command.zone_list`,
+                                );
+                                this.log.debug(
+                                    `Current command.zone_list state: ${JSON.stringify(command_zone_list_state)}`,
+                                );
+
+                                let command_zone_list;
+                                if (typeof command_zone_list_state?.val !== 'string') {
+                                    this.log.error('Command zone list for ${serialNumber} is not a string');
+                                } else {
+                                    try {
+                                        command_zone_list = JSON.parse(command_zone_list_state.val);
+                                    } catch (error) {
+                                        this.log.error(
+                                            `Failed to parse command zone list for ${serialNumber}: ${error.message}`,
+                                        );
+                                    }
                                 }
-                            } else {
-                                // No value given, so ack an empty list
-                                zoneList = [];
+
+                                if (Array.isArray(command_zone_list) && command_zone_list.length > 0) {
+                                    if (!this.isGoodZoneList(device, command_zone_list)) {
+                                        this.log.error(
+                                            'Cannot start custom_area_mow_start due to invalid command.zone_list',
+                                        );
+                                    } else {
+                                        this.log.info(
+                                            `${device.alias}: custom_area_mow_start ${JSON.stringify(command_zone_list)}`,
+                                        );
+                                        await this.client.asyncSendServiceCommand(
+                                            serialNumber,
+                                            'custom_area_mow_start',
+                                            {
+                                                id: command_zone_list,
+                                            },
+                                        );
+                                        ackState = true;
+                                    }
+                                }
+                                break;
                             }
 
-                            // Ack only if we now have a list
-                            if (Array.isArray(zoneList)) {
-                                ackState = JSON.stringify(zoneList);
-                                // We don't need to sync after this as no command was actually sent yet
-                                doSync = false;
+                            case 'zone_list': {
+                                let zoneList;
+                                // This will affect the next start command only.
+                                if (typeof state?.val === 'string' && state.val !== '') {
+                                    // Some kind of non-blank value given
+                                    try {
+                                        zoneList = JSON.parse(state.val);
+                                    } catch (error) {
+                                        this.log.error(`Failed to parse zone list for ${id}: ${error.message}`);
+                                    }
+
+                                    // Make sure all IDs in list are valid
+                                    if (!this.isGoodZoneList(device, zoneList)) {
+                                        // Set to null so we don't ack it
+                                        zoneList = null;
+                                    }
+                                } else {
+                                    // No value given, so ack an empty list
+                                    zoneList = [];
+                                }
+
+                                // Ack only if we now have a list
+                                if (Array.isArray(zoneList)) {
+                                    ackState = JSON.stringify(zoneList);
+                                    // We don't need to sync after this as no command was actually sent yet
+                                    doSync = false;
+                                }
+
+                                break;
                             }
 
-                            break;
+                            case 'mow_start':
+                                // To start mowing have to put app_state first.
+                                await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
+                            // Purposfully fall through to send the actual command!
+
+                            // Generic one-shot commands
+                            /* falls through */
+                            case 'charge_start':
+                            case 'mow_pause':
+                            case 'stop_all_tasks': {
+                                this.log.info(`${device.alias}: ${command}`);
+                                await this.client.asyncSendServiceCommand(serialNumber, command, 1);
+                                ackState = true;
+                                break;
+                            }
+
+                            default:
+                                this.log.warn(`Unknown command: ${command}`);
                         }
-
-                        case 'mow_start':
-                            // To start mowing have to put app_state first.
-                            await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
-                        // Purposfully fall through to send the actual command!
-
-                        // Generic one-shot commands
-                        /* falls through */
-                        case 'charge_start':
-                        case 'mow_pause':
-                        case 'stop_all_tasks': {
-                            this.log.info(`${device.alias}: ${command}`);
-                            await this.client.asyncSendServiceCommand(serialNumber, command, 1);
-                            ackState = true;
-                            break;
-                        }
-
-                        default:
-                            this.log.warn(`Unknown command: ${command}`);
                     }
-                }
 
-                // Ack command if verified valid above
-                if (ackState) {
-                    await this.setState(id, ackState, true);
+                    // Ack command if verified valid above
+                    if (ackState) {
+                        await this.setState(id, ackState, true);
 
-                    // Sync device if no explicitally set not to
-                    if (doSync) {
-                        this.syncDevice(device);
+                        // Sync device if no explicitally set not to
+                        if (doSync) {
+                            this.syncDevice(device);
+                        }
                     }
                 }
             }
@@ -261,11 +271,7 @@ class Anthbot extends utils.Adapter {
 
         this.log.info('Connecting to Anthbot cloud...');
         try {
-            await this.client.asyncLogin({
-                username: this.config.username,
-                password: this.config.password,
-                areaCode: this.config.regionCode,
-            });
+            await this.client.asyncLogin(this.config.username, this.config.password, this.config.regionCode);
         } catch (error) {
             this.log.error(`Failed to login to Anthbot cloud: ${error.message}`);
             await this.retryConnection();
