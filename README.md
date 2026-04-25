@@ -19,6 +19,11 @@ Connect with Anthbot devices such as their robot mowers.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+* (raintonr) adapter checker issues
+
+
 ### 0.0.2 (2026-04-25)
 * (raintonr) initial release
 
