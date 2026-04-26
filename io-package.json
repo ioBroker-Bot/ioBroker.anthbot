@@ -102,6 +102,13 @@
     "password": "",
     "regionCode": 61
   },
+  "encryptedNative": {
+    "password": ""
+  },
+  "protectedNative": {
+    "username": "",
+    "password": ""
+  },
   "objects": [],
   "instanceObjects": [
     {
