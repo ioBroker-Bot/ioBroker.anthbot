@@ -19,6 +19,10 @@ Connect with Anthbot devices such as their robot mowers.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+- (copilot) Adapter requires admin >= 7.7.22 now
+
 ### 0.0.3 (2026-04-25)
 * (raintonr) adapter checker issues
 
@@ -28,6 +32,8 @@ Connect with Anthbot devices such as their robot mowers.
 ## License
 MIT License
 
+
+Copyright (c) 2026 iobroker-community-adapters <iobroker-community-adapters@gmx.de>  
 Copyright (c) 2026 Robin Rainton <robin@rainton.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

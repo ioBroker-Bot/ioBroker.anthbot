@@ -57,7 +57,8 @@
       "zh-cn": "与 Anthbot 设备连接，例如机器人割草机"
     },
     "authors": [
-      "Robin Rainton <robin@rainton.com>"
+      "Robin Rainton <robin@rainton.com>",
+      "iobroker-community-adapters <iobroker-community-adapters@gmx.de>"
     ],
     "keywords": [
       "robot",
@@ -92,7 +93,7 @@
     ],
     "globalDependencies": [
       {
-        "admin": ">=7.6.20"
+        "admin": ">=7.7.22"
       }
     ]
   },
