@@ -14,11 +14,45 @@
 
 Connect with Anthbot devices such as their robot mowers.
 
+### Monitoring
+
+Battery level is reported in the `elec` object. 
+
+View a device's status in the `mode` object (charging, mowing, standby, etc).
+
+The last status message & it's severity (event, error, etc) are shown in the `last_code`, `last_code_text` and `last_code_type` objects. If there is any demand for more message history this can be added in the future (please open an issue).
+
+`zone_info` object holds a JSON representation of the mapped zones.
+
+The rest of the objects should be self explanatory.
+
+### Commands
+
+`stop_all_tasks` equates to hiting 'Stop' in the Anthbot app.
+
+`charge_start` equates to the 'Recharge' icon in the Anthbot app.
+
+`mow_start` equates to start when in 'Full maps' mode.
+
+`custom_area_mow` equates to start in 'Zones' mode. For this to work a valid list of zone IDs must already be set in the `zone_list` object. Zone IDs are not the same as zone names the Anthbot app shows. Valid zone IDs can be found in the `zone_info` object.
+
+To start mowing one or more zones:
+
+- Set the `zone_list` object to an array of IDs. Eg: `[102, 117]`
+- Trigger the `custom_area_mow` button.
+
+With `area_set` it is possible to edit one or more zones. Take the JSON representation from a desired entry from the `zone_list`, modify it as required and save this the `area_set` object as a JSON array of zones.
+
+Note that it is not necessary to define all parameters for the zone and only those provided will be changed. Eg: `[{"mow_head":10,"id":117}]` will change the angle of mowing in zone 117 to 10 degrees and leave the other zone parameters as is.
+
 ## Changelog
 <!--
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+ - (raintonr) Added brief usage tips in readme
+
 ### 0.0.4 (2026-05-18)
 - (copilot) Adapter requires node.js >= 22 now
 - (copilot) Adapter requires admin >= 7.7.22 now
