@@ -19,8 +19,7 @@ Connect with Anthbot devices such as their robot mowers.
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.4 (2026-05-18)
 - (copilot) Adapter requires node.js >= 22 now
 - (copilot) Adapter requires admin >= 7.7.22 now
 - (raintonr) Handle temporary IoT access tokens (#9)
