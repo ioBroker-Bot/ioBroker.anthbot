@@ -368,7 +368,7 @@ class Anthbot extends utils.Adapter {
             }
 
             try {
-                const codeList = await this.client.asyncGetCodeList(device.sn);
+                const codeList = await this.client.asyncGetCodeList(device.sn, 1, 10 /* TODO: make configurable? */);
                 this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
                 await this.setCodeList(device, codeList);
             } catch (err) {
@@ -485,6 +485,21 @@ class Anthbot extends utils.Adapter {
         });
 
         // Code list (aka. messages)
+        // Full list for 'power users'
+        await this.setObjectNotExistsAsync(`${device.sn}.code_list`, {
+            type: 'state',
+            common: {
+                name: 'code_list',
+                type: 'string',
+                role: 'json',
+                desc: 'JSON object with last page of codes',
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
+        // Last code for simplcity
         await this.setObjectNotExistsAsync(`${device.sn}.last_code`, {
             type: 'state',
             common: {
@@ -649,6 +664,8 @@ class Anthbot extends utils.Adapter {
     }
 
     setCodeList(device, codeList) {
+        this.setStateChanged(`${device.sn}.code_list`, { val: JSON.stringify(codeList), ack: true });
+
         const lastCode = codeList[0];
         this.setStateChanged(`${device.sn}.last_code`, { val: lastCode.code, ack: true });
         this.setStateChanged(`${device.sn}.last_code_text`, { val: lastCode.event_message, ack: true });
