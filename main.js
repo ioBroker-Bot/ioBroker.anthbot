@@ -368,7 +368,7 @@ class Anthbot extends utils.Adapter {
             }
 
             try {
-                const codeList = await this.client.asyncGetCodeList(device.sn, 1, 10 /* TODO: make configurable? */);
+                const codeList = await this.client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
                 this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
                 await this.setCodeList(device, codeList);
             } catch (err) {
