@@ -52,6 +52,7 @@ Note that it is not necessary to define all parameters for the zone and only tho
 -->
 ### **WORK IN PROGRESS**
  - (raintonr) Added brief usage tips in readme
+ - (raintonr) Added active_area
 
 ### 0.0.4 (2026-05-18)
 - (copilot) Adapter requires node.js >= 22 now

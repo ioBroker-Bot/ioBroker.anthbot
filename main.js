@@ -390,6 +390,19 @@ class Anthbot extends utils.Adapter {
         });
 
         // Shadow properties...
+        await this.setObjectNotExistsAsync(`${device.sn}.active_area`, {
+            type: 'state',
+            common: {
+                name: 'active_area',
+                type: 'array',
+                role: 'info.ids',
+                desc: `List of zones currently being mowed (in 'zonemowing' mode)`,
+                read: true,
+                write: false,
+            },
+            native: {},
+        });
+
         await this.setObjectNotExistsAsync(`${device.sn}.elec`, {
             type: 'state',
             common: {
@@ -623,6 +636,7 @@ class Anthbot extends utils.Adapter {
             this.setConnected(false);
         }
 
+        this.setStateChanged(`${device.sn}.active_area`, { val: shadowState.active_area.id, ack: true });
         this.setStateChanged(`${device.sn}.elec`, { val: shadowState.elec.value, ack: true });
         this.setStateChanged(`${device.sn}.mode`, { val: shadowState.mode.value, ack: true });
         this.setStateChanged(`${device.sn}.mowing_area`, { val: shadowState.mowing_area.value, ack: true });
