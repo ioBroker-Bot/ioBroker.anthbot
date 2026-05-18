@@ -636,7 +636,10 @@ class Anthbot extends utils.Adapter {
             this.setConnected(false);
         }
 
-        this.setStateChanged(`${device.sn}.active_area`, { val: shadowState.active_area.id, ack: true });
+        this.setStateChanged(`${device.sn}.active_area`, {
+            val: JSON.stringify(shadowState.active_area.id),
+            ack: true,
+        });
         this.setStateChanged(`${device.sn}.elec`, { val: shadowState.elec.value, ack: true });
         this.setStateChanged(`${device.sn}.mode`, { val: shadowState.mode.value, ack: true });
         this.setStateChanged(`${device.sn}.mowing_area`, { val: shadowState.mowing_area.value, ack: true });
