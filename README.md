@@ -20,7 +20,7 @@ Battery level is reported in the `elec` state.
 
 View a device's status in the `mode` state (charging, mowing, standby, etc).
 
-The last status message & it's severity (event, error, etc) are shown in the `last_code`, `last_code_text` and `last_code_type` states. For users looking for more history, the `code_list` state holds a JSON array with the last page of messages.
+The last status message & it's severity (event, error, etc) are shown in the `last_code`, `last_code_text` and `last_code_type` states. For users looking for more history, the `code_list` state holds a JSON array with the a larger number of messages.
 
 `zone_info` state holds a JSON representation of the mapped zones.
 
@@ -40,6 +40,8 @@ To start mowing one or more zones:
 
 - Set the `zone_list` state to an array of IDs. Eg: `[102, 117]`
 - Trigger the `custom_area_mow` state.
+
+### Map & zone editing
 
 With `area_set` it is possible to edit one or more zones. Take the JSON representation from a desired entry from the `zone_list`, modify it as required and save this the `area_set` state as a JSON array of zones.
 
