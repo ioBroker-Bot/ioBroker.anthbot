@@ -389,258 +389,78 @@ class Anthbot extends utils.Adapter {
             native: {},
         });
 
-        // Shadow properties...
-        await this.setObjectNotExistsAsync(`${device.sn}.active_area`, {
-            type: 'state',
-            common: {
-                name: 'active_area',
-                type: 'array',
-                role: 'info.ids',
-                desc: `List of zones currently being mowed (in 'zonemowing' mode)`,
+        const readOnlyStates = [
+            // Shadow properties
+            ['active_area', 'array', 'info.ids', `List of zones currently being mowed (in 'zonemowing' mode)`],
+            ['elec', 'number', 'level.battery', 'Battery level', '%'],
+            ['mode', 'string', 'text', 'Current mode'],
+            ['mowing_area', 'number', 'value', 'Current mowing area', 'm²'],
+            ['mowing_time', 'number', 'time.span', 'Current mowing time', 's'],
+            ['rtk_moved', 'boolean', 'sensor.motion', 'RTK movement detected'],
+            ['rtk_state', 'boolean', 'sensor', 'RTK state'],
+
+            // Code list (aka. messages)
+            // Full list for 'power users'
+            ['code_list', 'string', 'json', 'JSON object with last page of codes'],
+            // Last code for simplcity
+            ['last_code', 'number', 'value', 'Last code'],
+            ['last_code_text', 'string', 'text', 'Last code text'],
+            ['last_code_type', 'string', 'text', 'Last code type (e.g. event, error, etc.)'],
+
+            ['zone_info', 'string', 'json', 'JSON object with zone information'],
+        ];
+
+        for (const state of readOnlyStates) {
+            const common = {
+                name: state[0],
+                type: state[1],
+                role: state[2],
+                desc: state[3],
                 read: true,
                 write: false,
-            },
-            native: {},
-        });
+            };
+            if (state[4]) {
+                common.unit = state[4];
+            }
+            // @ts-expect-error as 'type' below as a plain string doesn't check against ioBroker.CommonType
+            await this.setObjectNotExistsAsync(`${device.sn}.${state[0]}`, {
+                type: 'state',
+                common,
+                native: {},
+            });
+        }
 
-        await this.setObjectNotExistsAsync(`${device.sn}.elec`, {
-            type: 'state',
-            common: {
-                name: 'elec',
-                type: 'number',
-                unit: '%',
-                desc: 'Battery level',
-                role: 'level.battery',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
+        const commandStates = [
+            // Command buttons
+            ['mow_start', 'boolean', 'button.start', 'Start global mowing'],
+            ['stop_all_tasks', 'boolean', 'button.stop', 'Stop'],
+            ['mow_pause', 'boolean', 'button.pause', 'Pause'],
+            ['charge_start', 'boolean', 'button', 'Return home/start charging'],
+            ['custom_area_mow_start', 'boolean', 'button.start', 'Start zone mowing'],
 
-        await this.setObjectNotExistsAsync(`${device.sn}.mode`, {
-            type: 'state',
-            common: {
-                name: 'mode',
-                type: 'string',
-                role: 'text',
-                desc: 'Current mode',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
+            // Zone list for relevant commands
+            ['zone_list', 'string', 'info.ids', `Zone list for next command (array of zone IDs, e.g. '[101,120,132]')`],
 
-        await this.setObjectNotExistsAsync(`${device.sn}.mowing_area`, {
-            type: 'state',
-            common: {
-                name: 'mowing_area',
-                type: 'number',
-                unit: 'm²',
-                desc: 'Current mowing area',
-                role: 'value',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
+            // For 'area_set'
+            ['area_set', 'string', 'json', 'JSON object with zone information to write'],
+        ];
 
-        await this.setObjectNotExistsAsync(`${device.sn}.mowing_time`, {
-            type: 'state',
-            common: {
-                name: 'mowing_time',
-                type: 'number',
-                unit: 's',
-                role: 'time.span',
-                desc: 'Current mowing time',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        await this.setObjectNotExistsAsync(`${device.sn}.rtk_moved`, {
-            type: 'state',
-            common: {
-                name: 'rtk_moved',
-                type: 'boolean',
-                role: 'sensor.motion',
-                desc: 'RTK movement detected',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        await this.setObjectNotExistsAsync(`${device.sn}.rtk_state`, {
-            type: 'state',
-            common: {
-                name: 'rtk_state',
-                type: 'boolean',
-                role: 'sensor',
-                desc: 'RTK state',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        // Code list (aka. messages)
-        // Full list for 'power users'
-        await this.setObjectNotExistsAsync(`${device.sn}.code_list`, {
-            type: 'state',
-            common: {
-                name: 'code_list',
-                type: 'string',
-                role: 'json',
-                desc: 'JSON object with last page of codes',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        // Last code for simplcity
-        await this.setObjectNotExistsAsync(`${device.sn}.last_code`, {
-            type: 'state',
-            common: {
-                name: 'last_code',
-                type: 'number',
-                desc: 'Last code',
-                role: 'value',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        await this.setObjectNotExistsAsync(`${device.sn}.last_code_text`, {
-            type: 'state',
-            common: {
-                name: 'last_code_text',
-                type: 'string',
-                role: 'text',
-                desc: 'Last code text',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        await this.setObjectNotExistsAsync(`${device.sn}.last_code_type`, {
-            type: 'state',
-            common: {
-                name: 'last_code_type',
-                type: 'string',
-                role: 'text',
-                desc: 'Last code type (e.g. event, error, etc.)',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        await this.setObjectNotExistsAsync(`${device.sn}.zone_info`, {
-            type: 'state',
-            common: {
-                name: 'zone_info',
-                type: 'string',
-                role: 'json',
-                desc: 'JSON object with zone information',
-                read: true,
-                write: false,
-            },
-            native: {},
-        });
-
-        // Command buttons
-        await this.setObjectNotExistsAsync(`${device.sn}.command.custom_area_mow_start`, {
-            type: 'state',
-            common: {
-                name: 'start',
-                type: 'boolean',
-                role: 'button.start',
-                desc: 'Start zone mowing',
+        for (const state of commandStates) {
+            const common = {
+                name: state[0],
+                type: state[1],
+                role: state[2],
+                desc: state[3],
                 read: false,
                 write: true,
-            },
-            native: {},
-        });
-        await this.setObjectNotExistsAsync(`${device.sn}.command.mow_start`, {
-            type: 'state',
-            common: {
-                name: 'start',
-                type: 'boolean',
-                role: 'button.start',
-                desc: 'Start global mowing',
-                read: false,
-                write: true,
-            },
-            native: {},
-        });
-        await this.setObjectNotExistsAsync(`${device.sn}.command.stop_all_tasks`, {
-            type: 'state',
-            common: {
-                name: 'stop',
-                type: 'boolean',
-                role: 'button.stop',
-                desc: 'Stop',
-                read: false,
-                write: true,
-            },
-            native: {},
-        });
-        await this.setObjectNotExistsAsync(`${device.sn}.command.mow_pause`, {
-            type: 'state',
-            common: {
-                name: 'pause',
-                type: 'boolean',
-                role: 'button.pause',
-                desc: 'Pause',
-                read: false,
-                write: true,
-            },
-            native: {},
-        });
-        await this.setObjectNotExistsAsync(`${device.sn}.command.charge_start`, {
-            type: 'state',
-            common: {
-                name: 'home',
-                type: 'boolean',
-                role: 'button',
-                desc: 'Return home/start charging',
-                read: false,
-                write: true,
-            },
-            native: {},
-        });
-
-        // Zone list for relevant commands
-        await this.setObjectNotExistsAsync(`${device.sn}.command.zone_list`, {
-            type: 'state',
-            common: {
-                name: 'zone_list',
-                type: 'array',
-                role: 'info.ids',
-                desc: `Zone list for next command (array of zone IDs, e.g. '[101,120,132]')`,
-                read: false,
-                write: true,
-            },
-            native: {},
-        });
-
-        // For 'area_set'
-        await this.setObjectNotExistsAsync(`${device.sn}.command.area_set`, {
-            type: 'state',
-            common: {
-                name: 'area_set',
-                type: 'string',
-                role: 'json',
-                desc: 'JSON object with zone information to write',
-                read: false,
-                write: true,
-            },
-            native: {},
-        });
+            };
+            // @ts-expect-error as 'type' below as a plain string doesn't check against ioBroker.CommonType
+            await this.setObjectNotExistsAsync(`${device.sn}.command.${state[0]}`, {
+                type: 'state',
+                common,
+                native: {},
+            });
+        }
     }
 
     // Helper function to set shadow state values
