@@ -380,21 +380,22 @@ class Anthbot extends utils.Adapter {
             const areaSetting = deviceMapFiles['area_setting.json'];
             this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
 
-            const custom_areas = areaSetting?.content?.custom_areas;
-            this.log.debug(`custom_areas: ${JSON.stringify(custom_areas)}`);
+            const customAreas = areaSetting?.content?.custom_areas;
+            this.log.debug(`custom_areas: ${JSON.stringify(customAreas)}`);
 
             // Stash custom_areas in the passed device
-            device.customAreas = custom_areas;
+            device.customAreas = customAreas;
 
             // And save the state
             this.setStateChanged(`${device.sn}.map.custom_areas.raw`, {
-                val: JSON.stringify(custom_areas),
+                val: JSON.stringify(customAreas),
                 ack: true,
             });
 
-            for (const customArea of custom_areas) {
+            for (const customArea of customAreas) {
                 // Use setObject here so if the name changes online it gets updated in IoB
-                await this.setObject(`${device.sn}.map.custom_areas.${customArea.id}`, {
+                const customAreaChannelStateId = `${device.sn}.map.custom_areas.${customArea.id}`;
+                await this.setObject(customAreaChannelStateId, {
                     type: 'channel',
                     common: {
                         name: customArea.name,
@@ -405,28 +406,11 @@ class Anthbot extends utils.Adapter {
                 const customAreaStates = [
                     ['last_start', 'number', 'value.time', 'Start time of last job including this area'],
                     ['last_finish', 'number', 'value.time', 'End time of last job including this area'],
-                    //TODO: estimated time & battery required & some control states
+                    ['estimated_elapsed_time', 'number', 'time.span', 'Estimated elapsed time to mow this area', 's'],
+                    //TODO: estimated battery required & some control states
                 ];
 
-                for (const state of customAreaStates) {
-                    const common = {
-                        name: state[0],
-                        type: state[1],
-                        role: state[2],
-                        desc: state[3],
-                        read: true,
-                        write: false,
-                    };
-                    await this.setObject(
-                        `${device.sn}.map.custom_areas.${customArea.id}.${state[0]}`,
-                        // @ts-expect-error as 'type' below as a plain string doesn't check against ioBroker.CommonType
-                        {
-                            type: 'state',
-                            common,
-                            native: {},
-                        },
-                    );
-                }
+                await this.createObjectsFromList(customAreaChannelStateId, customAreaStates);
             }
 
             // Go find all the custom area channels that aren't in the current list and delete them
@@ -434,8 +418,8 @@ class Anthbot extends utils.Adapter {
             this.log.debug(`Existing custom area channels: ${JSON.stringify(existingChannels)}`);
             for (const existingChannel of existingChannels) {
                 const channelId = existingChannel._id.split('.').pop();
-                if (!custom_areas.find(area => area.id == channelId)) {
-                    this.log.info(
+                if (!customAreas.find(area => area.id == channelId)) {
+                    this.log.debug(
                         `Deleting custom area channel ${existingChannel._id} as it's no longer in the map info`,
                     );
                     await this.delObjectAsync(existingChannel._id, { recursive: true });
@@ -478,11 +462,13 @@ class Anthbot extends utils.Adapter {
 
                 // Set start time for each active area
                 for (const activeAreaId of shadowState.active_area.id) {
-                    const stateId = `${device.sn}.map.custom_areas.${activeAreaId}.last_start`;
-                    await this.setStateChanged(stateId, { val: startTime, ack: true });
+                    await this.setStateChanged(`${device.sn}.map.custom_areas.${activeAreaId}.last_start`, {
+                        val: startTime,
+                        ack: true,
+                    });
                 }
             }
-        } else if (Array.isArray(codeList) && device.isZoneMowing) {
+        } else if (Array.isArray(codeList) && device.isZoneMowing && Array.isArray(shadowState.active_area.id)) {
             // If we can find a "Task finished" code (#1014) before (which is chronologically after)
             // the previous start code (#1018) then we're done
             const startIndex = codeList.findIndex(code => code.code === 1018);
@@ -490,18 +476,73 @@ class Anthbot extends utils.Adapter {
             if (endIndex >= 0 && (endIndex < startIndex || startIndex === -1)) {
                 this.log.debug('Zone mowing end code found');
 
+                // Add 'Z' because the time is UTC
                 const endTime = Date.parse(`${codeList[endIndex].create_time}Z`);
-                // Set start time for each active area
+
+                // Set finish time for each active area
                 for (const activeAreaId of shadowState.active_area.id) {
-                    const stateId = `${device.sn}.map.custom_areas.${activeAreaId}.last_finish`;
-                    await this.setStateChanged(stateId, { val: endTime, ack: true });
+                    await this.setStateChanged(`${device.sn}.map.custom_areas.${activeAreaId}.last_finish`, {
+                        val: endTime,
+                        ack: true,
+                    });
                 }
+
+                // If this was a single zone, we can set the estimated time to complete
+                if (shadowState.active_area.id.length == 1) {
+                    // TODO: make sure there were no errors between start and end codes
+                    // TODO: make sure battery was close to full when starting
+                    // TODO: possibly throw this number away when area vertexes change
+                    const singleAreaId = shadowState.active_area.id[0];
+                    const startTime = (
+                        await this.getStateAsync(`${device.sn}.map.custom_areas.${singleAreaId}.last_start`)
+                    )?.val;
+                    if (!startTime || !(Number(startTime) > 0)) {
+                        this.log.warn(`Single area ID ${singleAreaId} has no start time`);
+                    } else {
+                        await this.setStateChanged(
+                            `${device.sn}.map.custom_areas.${singleAreaId}.estimated_elapsed_time`,
+                            {
+                                val: endTime - Number(startTime),
+                                ack: true,
+                            },
+                        );
+                    }
+                }
+
                 device.isZoneMowing = false;
             } else if (shadowState.mode.value != 'zonemowing' && shadowState.mode.value != 'charge') {
                 // Not zonemowing (or charging part way through) but didn't find a "Task finished" code
                 this.log.warn('zonemowing looks done but no "Task finished" code found');
                 device.isZoneMowing = false;
             }
+        }
+    }
+
+    /**
+     * Create multiple state objects from a list of their parameters
+     *
+     * @param {string} prefix State ID prefix
+     * @param {array} stateList Array of state parameters
+     */
+
+    async createObjectsFromList(prefix, stateList) {
+        for (const state of stateList) {
+            const common = {
+                name: state[0],
+                type: state[1],
+                role: state[2],
+                desc: state[3],
+                read: true,
+                write: false,
+            };
+            if (state[4]) {
+                common.unit = state[4];
+            }
+            await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
+                type: 'state',
+                common,
+                native: {},
+            });
         }
     }
 
@@ -558,25 +599,7 @@ class Anthbot extends utils.Adapter {
             ['map.ridable_areas.raw', 'string', 'json', 'JSON object with ridable area (aka. edge) information'],
         ];
 
-        for (const state of readOnlyStates) {
-            const common = {
-                name: state[0],
-                type: state[1],
-                role: state[2],
-                desc: state[3],
-                read: true,
-                write: false,
-            };
-            if (state[4]) {
-                common.unit = state[4];
-            }
-            // @ts-expect-error as 'type' below as a plain string doesn't check against ioBroker.CommonType
-            await this.setObjectNotExistsAsync(`${device.sn}.${state[0]}`, {
-                type: 'state',
-                common,
-                native: {},
-            });
-        }
+        await this.createObjectsFromList(device.sn, readOnlyStates);
 
         const commandStates = [
             // Command buttons
