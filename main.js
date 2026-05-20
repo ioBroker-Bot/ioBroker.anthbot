@@ -103,7 +103,7 @@ class Anthbot extends utils.Adapter {
                                     }
                                 }
 
-                                // Overlay elements from the state onto existing zones so user only has to set
+                                // Overlay elements from the state onto existing custom areas so user only has to set
                                 // the items they are changing and rest will be preserved.
 
                                 // Variable named to match asyncSendServiceCommand data
@@ -112,7 +112,7 @@ class Anthbot extends utils.Adapter {
                                 if (!custom_areas) {
                                     this.log.error(`Bad area data in ${id}`);
                                 } else {
-                                    // Write the given area (zone) data
+                                    // Write the given custom area data
                                     this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
                                     await this.client.asyncSendServiceCommand(serialNumber, 'area_set', {
                                         custom_areas,
@@ -125,42 +125,42 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'custom_area_mow_start': {
-                                // Get/check command zone_list
+                                // Get/check command area_list
                                 // This could be done in one shot, but get the state first for debug logging
-                                const command_zone_list_state = await this.getStateAsync(
-                                    `${device.sn}.command.zone_list`,
+                                const command_area_list_state = await this.getStateAsync(
+                                    `${device.sn}.command.area_list`,
                                 );
                                 this.log.debug(
-                                    `Current command.zone_list state: ${JSON.stringify(command_zone_list_state)}`,
+                                    `Current command.area_list state: ${JSON.stringify(command_area_list_state)}`,
                                 );
 
-                                let command_zone_list;
-                                if (typeof command_zone_list_state?.val !== 'string') {
-                                    this.log.error('Command zone list for ${serialNumber} is not a string');
+                                let command_area_list;
+                                if (typeof command_area_list_state?.val !== 'string') {
+                                    this.log.error('Command area list for ${serialNumber} is not a string');
                                 } else {
                                     try {
-                                        command_zone_list = JSON.parse(command_zone_list_state.val);
+                                        command_area_list = JSON.parse(command_area_list_state.val);
                                     } catch (error) {
                                         this.log.error(
-                                            `Failed to parse command zone list for ${serialNumber}: ${error.message}`,
+                                            `Failed to parse command area list for ${serialNumber}: ${error.message}`,
                                         );
                                     }
                                 }
 
-                                if (Array.isArray(command_zone_list) && command_zone_list.length > 0) {
-                                    if (!this.isGoodZoneList(device, command_zone_list)) {
+                                if (Array.isArray(command_area_list) && command_area_list.length > 0) {
+                                    if (!this.isGoodCustomAreaList(device, command_area_list)) {
                                         this.log.error(
-                                            'Cannot start custom_area_mow_start due to invalid command.zone_list',
+                                            'Cannot start custom_area_mow_start due to invalid command.area_list',
                                         );
                                     } else {
                                         this.log.info(
-                                            `${device.alias}: custom_area_mow_start ${JSON.stringify(command_zone_list)}`,
+                                            `${device.alias}: custom_area_mow_start ${JSON.stringify(command_area_list)}`,
                                         );
                                         await this.client.asyncSendServiceCommand(
                                             serialNumber,
                                             'custom_area_mow_start',
                                             {
-                                                id: command_zone_list,
+                                                id: command_area_list,
                                             },
                                         );
                                         ackState = true;
@@ -169,30 +169,30 @@ class Anthbot extends utils.Adapter {
                                 break;
                             }
 
-                            case 'zone_list': {
-                                let zoneList;
+                            case 'area_list': {
+                                let areaList;
                                 // This will affect the next start command only.
                                 if (typeof state?.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
                                     try {
-                                        zoneList = JSON.parse(state.val);
+                                        areaList = JSON.parse(state.val);
                                     } catch (error) {
-                                        this.log.error(`Failed to parse zone list for ${id}: ${error.message}`);
+                                        this.log.error(`Failed to parse area list for ${id}: ${error.message}`);
                                     }
 
                                     // Make sure all IDs in list are valid
-                                    if (!this.isGoodZoneList(device, zoneList)) {
+                                    if (!this.isGoodCustomAreaList(device, areaList)) {
                                         // Set to null so we don't ack it
-                                        zoneList = null;
+                                        areaList = null;
                                     }
                                 } else {
                                     // No value given, so ack an empty list
-                                    zoneList = [];
+                                    areaList = [];
                                 }
 
                                 // Ack only if we now have a list
-                                if (Array.isArray(zoneList)) {
-                                    ackState = JSON.stringify(zoneList);
+                                if (Array.isArray(areaList)) {
+                                    ackState = JSON.stringify(areaList);
                                     // We don't need to sync after this as no command was actually sent yet
                                     doSync = false;
                                 }
@@ -318,16 +318,6 @@ class Anthbot extends utils.Adapter {
             // Wait a second for their backend
             await new Promise(resolve => this.setTimeout(resolve, 1000, null));
 
-            // TODO: figure out how to tell when map changes and reload periodically?
-            const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
-
-            const areaSetting = deviceMapFiles['area_setting.json'];
-            this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
-            this.setZoneInfo(device, areaSetting?.content?.custom_areas);
-
-            const timeSetting = deviceMapFiles['time_setting.json'];
-            this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
-
             await this.pollDevice(device);
             this.pollingInterval = this.setInterval(async () => {
                 this.pollDevice(device);
@@ -357,16 +347,21 @@ class Anthbot extends utils.Adapter {
     // Poll device
     async pollDevice(device) {
         if (this.checkClient()) {
+            let area_id;
+
+            // Shadow state
             try {
                 const shadowState = await this.client.asyncGetShadowReportedState(device.sn);
                 this.log.debug(`Device shadow reported state:\n${JSON.stringify(shadowState)}`);
                 await this.setShadowState(device, shadowState);
+                area_id = shadowState.map.area_id;
             } catch (err) {
                 this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
                 this.retryConnection();
             }
 
+            // Code list
             try {
                 const codeList = await this.client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
                 this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
@@ -375,6 +370,42 @@ class Anthbot extends utils.Adapter {
                 this.log.error(`Failed to fetch code list for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
                 this.retryConnection();
+            }
+
+            // Fetch map if changed
+            if (area_id != device.area_id) {
+                this.log.info(`Device map area_id change detected, fetching new map info`);
+
+                const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
+
+                const areaSetting = deviceMapFiles['area_setting.json'];
+                this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
+
+                const custom_areas = areaSetting?.content?.custom_areas;
+                this.log.debug(`custom_areas: ${JSON.stringify(custom_areas)}`);
+
+                // Stash custom_areas in the passed device
+                device.customAreas = custom_areas;
+
+                // And save the state
+                this.setStateChanged(`${device.sn}.map.custom_areas.raw`, {
+                    val: JSON.stringify(custom_areas),
+                    ack: true,
+                });
+
+                // Save ridable areas state
+                this.setStateChanged(`${device.sn}.map.ridable_areas.raw`, {
+                    val: JSON.stringify(areaSetting?.content?.ridable_areas),
+                    ack: true,
+                });
+
+                // TODO: plan is to create a channel for each area and store info for them indivicually.
+
+                const timeSetting = deviceMapFiles['time_setting.json'];
+                this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
+
+                // And remember which area_id we loaded last
+                device.area_id = area_id;
             }
         }
     }
@@ -389,9 +420,27 @@ class Anthbot extends utils.Adapter {
             native: {},
         });
 
+        const channels = [
+            ['command', 'Commands'],
+            ['map', 'Map info'],
+            ['map.custom_areas', 'Custom areas, aka. Zones'],
+            ['map.ridable_areas', 'Ridable areas, aka. Edges'],
+        ];
+
+        for (const channel of channels) {
+            await this.setObjectNotExistsAsync(`${device.sn}.${channel[0]}`, {
+                type: 'channel',
+                common: {
+                    name: channel[0],
+                    desc: channel[1],
+                },
+                native: {},
+            });
+        }
+
         const readOnlyStates = [
             // Shadow properties
-            ['active_area', 'array', 'info.ids', `List of zones currently being mowed (in 'zonemowing' mode)`],
+            ['active_area', 'array', 'info.ids', 'List of areas currently being mowed'],
             ['elec', 'number', 'level.battery', 'Battery level', '%'],
             ['mode', 'string', 'text', 'Current mode'],
             ['mowing_area', 'number', 'value', 'Current mowing area', 'm²'],
@@ -407,7 +456,11 @@ class Anthbot extends utils.Adapter {
             ['last_code_text', 'string', 'text', 'Last code text'],
             ['last_code_type', 'string', 'text', 'Last code type (e.g. event, error, etc.)'],
 
-            ['zone_info', 'string', 'json', 'JSON object with zone information'],
+            // Maps
+            ['map.area_id', 'string', 'text', 'ID of current map area'],
+            ['map.map_area', 'number', 'value', 'Surface area of map', 'm²'],
+            ['map.custom_areas.raw', 'string', 'json', 'JSON object with custom area (aka. zone) information'],
+            ['map.ridable_areas.raw', 'string', 'json', 'JSON object with ridable area (aka. edge) information'],
         ];
 
         for (const state of readOnlyStates) {
@@ -436,13 +489,18 @@ class Anthbot extends utils.Adapter {
             ['stop_all_tasks', 'boolean', 'button.stop', 'Stop'],
             ['mow_pause', 'boolean', 'button.pause', 'Pause'],
             ['charge_start', 'boolean', 'button', 'Return home/start charging'],
-            ['custom_area_mow_start', 'boolean', 'button.start', 'Start zone mowing'],
+            ['custom_area_mow_start', 'boolean', 'button.start', 'Start custom area (aka. zone) mowing'],
 
-            // Zone list for relevant commands
-            ['zone_list', 'string', 'info.ids', `Zone list for next command (array of zone IDs, e.g. '[101,120,132]')`],
+            // Area list for relevant commands
+            [
+                'area_list',
+                'string',
+                'info.ids',
+                `Areas (aka. zones) for next command (array of IDs, e.g. '[101,120,132]')`,
+            ],
 
             // For 'area_set'
-            ['area_set', 'string', 'json', 'JSON object with zone information to write'],
+            ['area_set', 'string', 'json', 'JSON object with custom area (aka. zone) information to write'],
         ];
 
         for (const state of commandStates) {
@@ -481,6 +539,9 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.mowing_time`, { val: shadowState.mowing_time.value, ack: true });
         this.setStateChanged(`${device.sn}.rtk_moved`, { val: shadowState.rtk.moved == 1, ack: true });
         this.setStateChanged(`${device.sn}.rtk_state`, { val: shadowState.rtk.state == 1, ack: true });
+
+        this.setStateChanged(`${device.sn}.map.area_id`, { val: shadowState.map.area_id, ack: true });
+        this.setStateChanged(`${device.sn}.map.map_area`, { val: shadowState.map.map_area, ack: true });
     }
 
     setCodeList(device, codeList) {
@@ -501,7 +562,7 @@ class Anthbot extends utils.Adapter {
             for (const area of customAreas) {
                 let outArea;
 
-                const existingArea = device.zoneList.find(zone => zone.id === area.id);
+                const existingArea = device.customAreas.find(customArea => customArea.id === area.id);
                 if (existingArea) {
                     this.log.debug(`Found existing area ${area.id} for merge: ${JSON.stringify(existingArea)}`);
                     outArea = { ...existingArea, ...area };
@@ -551,42 +612,32 @@ class Anthbot extends utils.Adapter {
         return outputAreas;
     }
 
-    isGoodZoneList(device, zoneList) {
+    isGoodCustomAreaList(device, customAreaList) {
         // List to check must be an array
-        if (!Array.isArray(zoneList)) {
-            this.log.error(`Invalid zone list: not an array`);
+        if (!Array.isArray(customAreaList)) {
+            this.log.error(`Invalid custom area list: not an array`);
             return false;
         }
 
-        // If we don't even have zones for our device any list is bad
-        if (!device.zoneList) {
-            this.log.error('Invalid zone list: device has no zone info');
+        // If we don't even have custom areas for our device any list is bad
+        if (!device.customAreas) {
+            this.log.error('Invalid custom area list: device has no custom area info');
             return false;
         }
 
-        // Each zone in array must be a known zone ID
-        checkZone: for (const zoneId of zoneList) {
-            for (const zone of device.zoneList) {
-                if (zone.id === zoneId) {
-                    continue checkZone;
+        // Each area in array must be a known custom area ID
+        checkCustomArea: for (const customArea of customAreaList) {
+            for (const deviceCustomArea of device.customAreas) {
+                if (deviceCustomArea.id === customArea) {
+                    continue checkCustomArea;
                 }
             }
-            // If we didn't continue, then we didn't find the zoneId in our info list, so it's not good
-            this.log.error(`Invalid zone list: ${zoneId} not found in device info`);
+            // If we didn't continue, then we didn't find the area ID in our info list, so it's not good
+            this.log.error(`Invalid custom area list: ${customArea} not found in device info`);
             return false;
         }
 
         return true;
-    }
-
-    setZoneInfo(device, zoneInfo) {
-        this.log.debug(`zone_info for ${device.sn}: ${JSON.stringify(zoneInfo)}`);
-
-        // Stash in the passed device
-        device.zoneList = zoneInfo;
-
-        // And save the state
-        this.setStateChanged(`${device.sn}.zone_info`, { val: JSON.stringify(zoneInfo), ack: true });
     }
 
     subscribeToDevice(device) {
