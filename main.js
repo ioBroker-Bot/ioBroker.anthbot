@@ -335,15 +335,13 @@ class Anthbot extends utils.Adapter {
     // Poll device
     async pollDevice(device) {
         if (this.checkClient()) {
-            // Map area ID for checking for changes
-            let area_id;
-
             // Shadow state
+            // Define here so we can use the Map area ID below to check for changes
+            let shadowState;
             try {
-                const shadowState = await this.client.asyncGetShadowReportedState(device.sn);
+                shadowState = await this.client.asyncGetShadowReportedState(device.sn);
                 this.log.debug(`Device shadow reported state:\n${JSON.stringify(shadowState)}`);
                 await this.setShadowState(device, shadowState);
-                area_id = shadowState.map.area_id;
             } catch (err) {
                 this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
@@ -351,8 +349,10 @@ class Anthbot extends utils.Adapter {
             }
 
             // Code list
+            // Define here so we can use later to find task start/end times
+            let codeList;
             try {
-                const codeList = await this.client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
+                codeList = await this.client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
                 this.log.debug(`Device code list:\n${JSON.stringify(codeList)}`);
                 await this.setCodeList(device, codeList);
             } catch (err) {
@@ -362,7 +362,8 @@ class Anthbot extends utils.Adapter {
             }
 
             // Fetch map if changed
-            if (area_id != device.area_id) {
+            const mapAreaIdStateId = `${device.sn}.map.area_id`;
+            if (shadowState.map.area_id != (await this.getStateAsync(mapAreaIdStateId))?.val) {
                 this.log.info(`Device map area_id change detected, fetching new map info`);
 
                 const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
@@ -382,20 +383,116 @@ class Anthbot extends utils.Adapter {
                     ack: true,
                 });
 
+                for (const customArea of custom_areas) {
+                    // Use setObject here so if the name changes online it gets updated in IoB
+                    await this.setObject(`${device.sn}.map.custom_areas.${customArea.id}`, {
+                        type: 'channel',
+                        common: {
+                            name: customArea.name,
+                        },
+                        native: {},
+                    });
+
+                    const customAreaStates = [
+                        ['last_start', 'number', 'value.time', 'Start time of last job including this area'],
+                        ['last_finish', 'number', 'value.time', 'End time of last job including this area'],
+                        //TODO: estimated time & battery required & some control states
+                    ];
+
+                    for (const state of customAreaStates) {
+                        const common = {
+                            name: state[0],
+                            type: state[1],
+                            role: state[2],
+                            desc: state[3],
+                            read: true,
+                            write: false,
+                        };
+                        await this.setObject(
+                            `${device.sn}.map.custom_areas.${customArea.id}.${state[0]}`,
+                            // @ts-expect-error as 'type' below as a plain string doesn't check against ioBroker.CommonType
+                            {
+                                type: 'state',
+                                common,
+                                native: {},
+                            },
+                        );
+                    }
+                }
+
+                // Go find all the custom area channels that aren't in the current list and delete them
+                const existingChannels = await this.getChannelsOfAsync(`${device.sn}`);
+                this.log.debug(`Existing custom area channels: ${JSON.stringify(existingChannels)}`);
+                for (const existingChannel of existingChannels) {
+                    const channelId = existingChannel._id.split('.').pop();
+                    if (!custom_areas.find(area => area.id == channelId)) {
+                        this.log.info(
+                            `Deleting custom area channel ${existingChannel._id} as it's no longer in the map info`,
+                        );
+                        await this.delObjectAsync(existingChannel._id, { recursive: true });
+                    }
+                }
+
                 // Save ridable areas state
                 this.setStateChanged(`${device.sn}.map.ridable_areas.raw`, {
                     val: JSON.stringify(areaSetting?.content?.ridable_areas),
                     ack: true,
                 });
 
-                // TODO: plan is to create a channel for each area and store info for them indivicually.
-
                 const timeSetting = deviceMapFiles['time_setting.json'];
                 this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
 
-                // And remember which area_id we loaded last
-                device.area_id = area_id;
+                // Only save the area_id after map load to use for check detection - it must have changed
+                this.setState(mapAreaIdStateId, { val: shadowState.map.area_id, ack: true });
             }
+
+            // Figure out if device has just started/finished a custom area task & set states accordingly
+            if (
+                Array.isArray(codeList) &&
+                !device.isZoneMowing &&
+                shadowState.mode.value == 'zonemowing' &&
+                Array.isArray(shadowState.active_area.id)
+            ) {
+                // Currently mowing at least one zone
+                device.isZoneMowing = true;
+
+                // Go find the last "The robot is going to the designated area to mow" code (#1018) to get timestamp
+                const startCode = codeList.find(code => code.code === 1018);
+                if (!startCode) {
+                    this.log.warn('Could not find start code while zone mowing');
+                } else {
+                    this.log.debug(`startCode for zone mowing: ${JSON.stringify(startCode)}`);
+                    const startTime = Date.parse(startCode.create_time);
+
+                    // Set start time for each active area
+                    for (const activeAreaId of shadowState.active_area.id) {
+                        const stateId = `${device.sn}.map.custom_areas.${activeAreaId}.last_start`;
+                        await this.setStateChanged(stateId, { val: startTime, ack: true });
+                    }
+                }
+            } else if (Array.isArray(codeList) && device.isZoneMowing) {
+                // If we can find a "Task finished" code (#1014) before (which is chronologically after)
+                // the previous start code (#1018) then we're done
+                const startIndex = codeList.findIndex(code => code.code === 1018);
+                const endIndex = codeList.findIndex(code => code.code === 1014);
+                if (endIndex >= 0 && (endIndex < startIndex || startIndex === -1)) {
+                    this.log.debug('Zone mowing end code found');
+
+                    const endTime = Date.parse(codeList[endIndex].create_time);
+                    // Set start time for each active area
+                    for (const activeAreaId of shadowState.active_area.id) {
+                        const stateId = `${device.sn}.map.custom_areas.${activeAreaId}.last_finish`;
+                        await this.setStateChanged(stateId, { val: endTime, ack: true });
+                    }
+                    device.isZoneMowing = false;
+                } else if (shadowState.mode.value != 'zonemowing' && shadowState.mode.value != 'charge') {
+                    // Not zonemowing (or charging part way through) but didn't find a "Task finished" code
+                    this.log.warn('zonemowing looks done but no "Task finished" code found');
+                    device.isZoneMowing = false;
+                }
+            }
+
+            // TODO: Add something here if we are going to control scheduling
         }
     }
 
@@ -409,19 +506,19 @@ class Anthbot extends utils.Adapter {
             native: {},
         });
 
-        const channels = [
+        const folders = [
             ['command', 'Commands'],
             ['map', 'Map info'],
             ['map.custom_areas', 'Custom areas, aka. Zones'],
             ['map.ridable_areas', 'Ridable areas, aka. Edges'],
         ];
 
-        for (const channel of channels) {
-            await this.setObjectNotExistsAsync(`${device.sn}.${channel[0]}`, {
-                type: 'channel',
+        for (const folder of folders) {
+            await this.setObjectNotExistsAsync(`${device.sn}.${folder[0]}`, {
+                type: 'folder',
                 common: {
-                    name: channel[0],
-                    desc: channel[1],
+                    name: folder[0],
+                    desc: folder[1],
                 },
                 native: {},
             });
@@ -525,7 +622,7 @@ class Anthbot extends utils.Adapter {
         this.setStateChanged(`${device.sn}.rtk_moved`, { val: shadowState.rtk.moved == 1, ack: true });
         this.setStateChanged(`${device.sn}.rtk_state`, { val: shadowState.rtk.state == 1, ack: true });
 
-        this.setStateChanged(`${device.sn}.map.area_id`, { val: shadowState.map.area_id, ack: true });
+        // map.area_id is set only after map is load
         this.setStateChanged(`${device.sn}.map.map_area`, { val: shadowState.map.map_area, ack: true });
     }
 

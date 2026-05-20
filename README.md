@@ -1,4 +1,5 @@
 ![Logo](admin/anthbot.png)
+
 # ioBroker.anthbot
 
 [![NPM version](https://img.shields.io/npm/v/iobroker.anthbot.svg)](https://www.npmjs.com/package/iobroker.anthbot)
@@ -16,7 +17,7 @@ Connect with Anthbot devices such as their robot mowers.
 
 ### Monitoring
 
-Battery level is reported in the `elec` state. 
+Battery level is reported in the `elec` state.
 
 View a device's status in the `mode` state (charging, mowing, standby, etc).
 
@@ -32,12 +33,14 @@ The rest of the states should be self explanatory.
 
 `mow_start` equates to start when in 'Full maps' mode.
 
-`custom_area_mow_start` equates to custom area (aka 'Zones') mode. For this to work a valid list of area IDs must already be set in the `area_list` state. Area IDs are not the same as names the Anthbot app shows. Valid area IDs can be found in the `map.custom_areas.raw` state (this will be improved later).
+`custom_area_mow_start` equates to custom area (aka 'Zones') mode. For this to work a valid list of area IDs must already be set in the `area_list` state. Area IDs are not the same as names the Anthbot app shows. Valid area IDs can be found as channel IDs under the `map.custom_areas...` folder. A channel ID exists for each area.
 
 Ie. to start mowing one or more zones:
 
 - Set the `area_list` state to an array of IDs. Eg: `[102, 117]`
 - Trigger the `custom_area_mow_start` state.
+
+The adapter will attempt to determine when zone mowing is in progress and make a note in the relevant `map.custom_areas...` channel of start and finish times to understand how often zones are being cut. 
 
 `ridable_mow_start` equates to edge mowing mode. As with `custom_area_mow_start`, set the `area_list` with a valid list of ridable areas (aka. edge) IDs. Valid ridable area IDs can be found in the `map.ridable_areas.raw` state.
 
@@ -48,28 +51,39 @@ With `area_set` it is possible to edit one or more areas. Take the JSON represen
 Note that when using `area_set` it is not necessary to define all parameters and only those provided will be changed. Eg: `[{"mow_head":10,"id":117}]` will change the angle of mowing in area 117 to 10 degrees and leave the other parameters as is.
 
 ## Changelog
+
 <!--
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- (raintonr) Improved map change detection on startup
+- (raintonr) Added custom_area channels, monitoring & control
+
 ### 0.0.5 (2026-05-20)
- - (raintonr) Added brief usage tips in readme
- - (raintonr) Added active_area, code_list & map states and ridable_mow_start command
+
+- (raintonr) Added brief usage tips in readme
+- (raintonr) Added active_area, code_list & map states and ridable_mow_start command
 
 ### 0.0.4 (2026-05-18)
+
 - (copilot) Adapter requires node.js >= 22 now
 - (copilot) Adapter requires admin >= 7.7.22 now
 - (raintonr) Handle temporary IoT access tokens (#9)
 
 ### 0.0.3 (2026-04-25)
-* (raintonr) adapter checker issues
+
+- (raintonr) adapter checker issues
 
 ### 0.0.2 (2026-04-25)
-* (raintonr) initial release
+
+- (raintonr) initial release
 
 ## License
-MIT License
 
+MIT License
 
 Copyright (c) 2026 iobroker-community-adapters <iobroker-community-adapters@gmx.de>  
 Copyright (c) 2026 Robin Rainton <robin@rainton.com>
