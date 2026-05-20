@@ -32,12 +32,14 @@ The rest of the states should be self explanatory.
 
 `mow_start` equates to start when in 'Full maps' mode.
 
-`custom_area_mow_start` equates to start in custom area (aka 'Zones') mode. For this to work a valid list of area IDs must already be set in the `area_list` state. Area IDs are not the same as names the Anthbot app shows. Valid area IDs can be found in the `map.custom_areas.raw` state (this will be improved later).
+`custom_area_mow_start` equates to custom area (aka 'Zones') mode. For this to work a valid list of area IDs must already be set in the `area_list` state. Area IDs are not the same as names the Anthbot app shows. Valid area IDs can be found in the `map.custom_areas.raw` state (this will be improved later).
 
 Ie. to start mowing one or more zones:
 
 - Set the `area_list` state to an array of IDs. Eg: `[102, 117]`
 - Trigger the `custom_area_mow_start` state.
+
+`ridable_mow_start` equates to edge mowing mode. As with `custom_area_mow_start`, set the `area_list` with a valid list of ridable areas (aka. edge) IDs. Valid ridable area IDs can be found in the `map.ridable_areas.raw` state.
 
 ### Map & area (aka. zone) editing
 
@@ -52,7 +54,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 -->
 ### **WORK IN PROGRESS**
  - (raintonr) Added brief usage tips in readme
- - (raintonr) Added active_area, code_list, map states
+ - (raintonr) Added active_area, code_list & map states and ridable_mow_start command
 
 ### 0.0.4 (2026-05-18)
 - (copilot) Adapter requires node.js >= 22 now
