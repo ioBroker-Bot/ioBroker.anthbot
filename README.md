@@ -52,7 +52,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.0.5 (2026-05-20)
  - (raintonr) Added brief usage tips in readme
  - (raintonr) Added active_area, code_list & map states and ridable_mow_start command
 
