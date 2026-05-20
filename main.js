@@ -125,46 +125,27 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'custom_area_mow_start': {
-                                // Get/check command area_list
-                                // This could be done in one shot, but get the state first for debug logging
-                                const command_area_list_state = await this.getStateAsync(
-                                    `${device.sn}.command.area_list`,
-                                );
-                                this.log.debug(
-                                    `Current command.area_list state: ${JSON.stringify(command_area_list_state)}`,
-                                );
-
-                                let command_area_list;
-                                if (typeof command_area_list_state?.val !== 'string') {
-                                    this.log.error('Command area list for ${serialNumber} is not a string');
-                                } else {
-                                    try {
-                                        command_area_list = JSON.parse(command_area_list_state.val);
-                                    } catch (error) {
-                                        this.log.error(
-                                            `Failed to parse command area list for ${serialNumber}: ${error.message}`,
-                                        );
-                                    }
+                                const goodAreaList = await this.isGoodAreaList(device, `map.custom_areas.raw`);
+                                if (goodAreaList) {
+                                    this.log.info(
+                                        `${device.alias}: custom_area_mow_start ${JSON.stringify(goodAreaList)}`,
+                                    );
+                                    await this.client.asyncSendServiceCommand(serialNumber, 'custom_area_mow_start', {
+                                        id: goodAreaList,
+                                    });
+                                    ackState = true;
                                 }
+                                break;
+                            }
 
-                                if (Array.isArray(command_area_list) && command_area_list.length > 0) {
-                                    if (!this.isGoodCustomAreaList(device, command_area_list)) {
-                                        this.log.error(
-                                            'Cannot start custom_area_mow_start due to invalid command.area_list',
-                                        );
-                                    } else {
-                                        this.log.info(
-                                            `${device.alias}: custom_area_mow_start ${JSON.stringify(command_area_list)}`,
-                                        );
-                                        await this.client.asyncSendServiceCommand(
-                                            serialNumber,
-                                            'custom_area_mow_start',
-                                            {
-                                                id: command_area_list,
-                                            },
-                                        );
-                                        ackState = true;
-                                    }
+                            case 'ridable_mow_start': {
+                                const goodAreaList = await this.isGoodAreaList(device, `map.ridable_areas.raw`);
+                                if (goodAreaList) {
+                                    this.log.info(`${device.alias}: ridable_mow_start ${JSON.stringify(goodAreaList)}`);
+                                    await this.client.asyncSendServiceCommand(serialNumber, 'ridable_mow_start', {
+                                        id: goodAreaList,
+                                    });
+                                    ackState = true;
                                 }
                                 break;
                             }
@@ -180,8 +161,15 @@ class Anthbot extends utils.Adapter {
                                         this.log.error(`Failed to parse area list for ${id}: ${error.message}`);
                                     }
 
-                                    // Make sure all IDs in list are valid
-                                    if (!this.isGoodCustomAreaList(device, areaList)) {
+                                    // Make sure this is a list & is of valid custom or ridable area IDs
+                                    if (
+                                        !areaList ||
+                                        !Array.isArray(areaList) ||
+                                        !(
+                                            (await this.isGoodAreaList(device, 'map.custom_areas.raw', areaList)) ||
+                                            (await this.isGoodAreaList(device, 'map.ridable_areas.raw', areaList))
+                                        )
+                                    ) {
                                         // Set to null so we don't ack it
                                         areaList = null;
                                     }
@@ -347,6 +335,7 @@ class Anthbot extends utils.Adapter {
     // Poll device
     async pollDevice(device) {
         if (this.checkClient()) {
+            // Map area ID for checking for changes
             let area_id;
 
             // Shadow state
@@ -490,14 +479,10 @@ class Anthbot extends utils.Adapter {
             ['mow_pause', 'boolean', 'button.pause', 'Pause'],
             ['charge_start', 'boolean', 'button', 'Return home/start charging'],
             ['custom_area_mow_start', 'boolean', 'button.start', 'Start custom area (aka. zone) mowing'],
+            ['ridable_mow_start', 'boolean', 'button.start', 'Start ridable area (aka. edge) mowing'],
 
             // Area list for relevant commands
-            [
-                'area_list',
-                'string',
-                'info.ids',
-                `Areas (aka. zones) for next command (array of IDs, e.g. '[101,120,132]')`,
-            ],
+            ['area_list', 'string', 'info.ids', `Areas for next command (array of IDs, e.g. '[101,120,132]')`],
 
             // For 'area_set'
             ['area_set', 'string', 'json', 'JSON object with custom area (aka. zone) information to write'],
@@ -612,32 +597,72 @@ class Anthbot extends utils.Adapter {
         return outputAreas;
     }
 
-    isGoodCustomAreaList(device, customAreaList) {
+    parseJsonList(jsonString) {
+        let out;
+        if (typeof jsonString !== 'string') {
+            this.log.error('JSON to parse is not a string');
+        } else {
+            try {
+                out = JSON.parse(jsonString);
+            } catch (error) {
+                this.log.error(`Failed to parse JSON list: ${error.message}`);
+            }
+        }
+
         // List to check must be an array
-        if (!Array.isArray(customAreaList)) {
-            this.log.error(`Invalid custom area list: not an array`);
+        if (!Array.isArray(out)) {
+            this.log.error(`Invalid JSON list: not an array`);
+            out = undefined;
+        }
+
+        // List to check must have at least one item
+        if (out && out.length < 1) {
+            this.log.error(`Invalid JSON list: array is empty`);
+            out = undefined;
+        }
+
+        return out;
+    }
+
+    /**
+     *
+     * @param {object} device Device object for the check or specific list
+     * @param {string} checkListStateId State ID holding raw JSON list to check against
+     * @param {array | null} passedToCheck Optional list to check instead of fetching from command state
+     * @returns {Promise<array | false>} List if good, false if not
+     */
+
+    async isGoodAreaList(device, checkListStateId, passedToCheck = null) {
+        const listToCheck = passedToCheck
+            ? passedToCheck
+            : this.parseJsonList((await this.getStateAsync(`${device.sn}.command.area_list`))?.val);
+
+        if (!listToCheck || !Array.isArray(listToCheck)) {
+            this.log.error('Area list to check is not valid');
             return false;
         }
 
+        // Get IDs to check against
+        const checkAreas = this.parseJsonList((await this.getStateAsync(`${device.sn}.${checkListStateId}`))?.val);
         // If we don't even have custom areas for our device any list is bad
-        if (!device.customAreas) {
-            this.log.error('Invalid custom area list: device has no custom area info');
+        if (!checkAreas) {
+            this.log.error(`Area list invalid: no IDs to check against in ${checkListStateId}`);
             return false;
         }
 
         // Each area in array must be a known custom area ID
-        checkCustomArea: for (const customArea of customAreaList) {
-            for (const deviceCustomArea of device.customAreas) {
-                if (deviceCustomArea.id === customArea) {
-                    continue checkCustomArea;
+        checkArea: for (const areaToCheck of listToCheck) {
+            for (const checkArea of checkAreas) {
+                if (checkArea.id === areaToCheck) {
+                    continue checkArea;
                 }
             }
             // If we didn't continue, then we didn't find the area ID in our info list, so it's not good
-            this.log.error(`Invalid custom area list: ${customArea} not found in device info`);
+            this.log.warn(`Invalid custom area list: ${areaToCheck} not found in check list ${checkListStateId}`);
             return false;
         }
 
-        return true;
+        return listToCheck;
     }
 
     subscribeToDevice(device) {
