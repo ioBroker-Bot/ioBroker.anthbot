@@ -224,7 +224,7 @@ class Anthbot extends utils.Adapter {
             const custom_areas = this.validateCustomAreas(device, customAreas);
 
             if (!custom_areas) {
-                this.log.error(`Bad area data in ${id}`);
+                this.log.error(`Bad area data: ${customAreas}`);
             } else {
                 // Write the given custom area data
                 this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
@@ -814,6 +814,7 @@ class Anthbot extends utils.Adapter {
 
     /**
      * Parses a JSON string into an array
+     *
      * @param {StateValue | string | undefined} jsonString String to parse
      * @returns {array | undefined} Parsed array if valid, otherwise undefined
      */
