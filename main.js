@@ -410,7 +410,7 @@ class Anthbot extends utils.Adapter {
                     //TODO: estimated battery required & some control states
                 ];
 
-                await this.createObjectsFromList(customAreaChannelStateId, customAreaStates);
+                await this.createStatesFromList(customAreaChannelStateId, customAreaStates);
             }
 
             // Go find all the custom area channels that aren't in the current list and delete them
@@ -519,13 +519,13 @@ class Anthbot extends utils.Adapter {
     }
 
     /**
-     * Create multiple state objects from a list of their parameters
+     * Create multiple read onlystate objects from a list of their parameters
      *
      * @param {string} prefix State ID prefix
      * @param {array} stateList Array of state parameters
      */
 
-    async createObjectsFromList(prefix, stateList) {
+    async createStatesFromList(prefix, stateList) {
         for (const state of stateList) {
             const common = {
                 name: state[0],
@@ -539,6 +539,30 @@ class Anthbot extends utils.Adapter {
                 common.unit = state[4];
             }
             await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
+                type: 'state',
+                common,
+                native: {},
+            });
+        }
+    }
+
+    /**
+     * Create multiple command state objects from a list of their parameters
+     *
+     * @param {string} prefix State ID prefix
+     * @param {array} commandStates Array of state parameters
+     */
+    async createCommandStatesFromList(prefix, commandStates) {
+        for (const state of commandStates) {
+            const common = {
+                name: state[0],
+                type: state[1],
+                role: state[2],
+                desc: state[3],
+                read: false,
+                write: true,
+            };
+            await this.setObjectNotExistsAsync(`${prefix}.command.${state[0]}`, {
                 type: 'state',
                 common,
                 native: {},
@@ -598,8 +622,7 @@ class Anthbot extends utils.Adapter {
             ['map.custom_areas.raw', 'string', 'json', 'JSON object with custom area (aka. zone) information'],
             ['map.ridable_areas.raw', 'string', 'json', 'JSON object with ridable area (aka. edge) information'],
         ];
-
-        await this.createObjectsFromList(device.sn, readOnlyStates);
+        await this.createStatesFromList(device.sn, readOnlyStates);
 
         const commandStates = [
             // Command buttons
@@ -616,23 +639,7 @@ class Anthbot extends utils.Adapter {
             // For 'area_set'
             ['area_set', 'string', 'json', 'JSON object with custom area (aka. zone) information to write'],
         ];
-
-        for (const state of commandStates) {
-            const common = {
-                name: state[0],
-                type: state[1],
-                role: state[2],
-                desc: state[3],
-                read: false,
-                write: true,
-            };
-            // @ts-expect-error as 'type' below as a plain string doesn't check against ioBroker.CommonType
-            await this.setObjectNotExistsAsync(`${device.sn}.command.${state[0]}`, {
-                type: 'state',
-                common,
-                native: {},
-            });
-        }
+        await this.createCommandStatesFromList(device.sn, commandStates);
     }
 
     // Helper function to set shadow state values
