@@ -103,21 +103,7 @@ class Anthbot extends utils.Adapter {
                                     }
                                 }
 
-                                // Overlay elements from the state onto existing custom areas so user only has to set
-                                // the items they are changing and rest will be preserved.
-
-                                // Variable named to match asyncSendServiceCommand data
-                                const custom_areas = this.validateCustomAreas(device, customAreas);
-
-                                if (!custom_areas) {
-                                    this.log.error(`Bad area data in ${id}`);
-                                } else {
-                                    // Write the given custom area data
-                                    this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
-                                    await this.client.asyncSendServiceCommand(serialNumber, 'area_set', {
-                                        custom_areas,
-                                    });
-
+                                if (await this.doAreaSet(device, customAreas)) {
                                     ackState = JSON.stringify(customAreas);
                                 }
 
@@ -226,6 +212,31 @@ class Anthbot extends utils.Adapter {
         }
     }
 
+    async doAreaSet(device, customAreas) {
+        // Assume failure until verified and sent
+        let success = false;
+
+        if (this.checkClient()) {
+            // Overlay elements from the state onto existing custom areas so user only has to set
+            // the items they are changing and rest will be preserved.
+
+            // Variable named to match asyncSendServiceCommand data
+            const custom_areas = this.validateCustomAreas(device, customAreas);
+
+            if (!custom_areas) {
+                this.log.error(`Bad area data in ${id}`);
+            } else {
+                // Write the given custom area data
+                this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
+                await this.client.asyncSendServiceCommand(device.sn, 'area_set', {
+                    custom_areas,
+                });
+                success = true;
+            }
+        }
+        return success;
+    }
+
     // Retry connection with backoff
     async retryConnection() {
         if (this.retryTimer) {
@@ -298,7 +309,14 @@ class Anthbot extends utils.Adapter {
     }
 
     async syncDevice(device) {
-        if (this.checkClient()) {
+        // Don't sync right now if we are in the middle of polling
+        if (device.inPoll) {
+            device.syncReq = true;
+        } else if (this.checkClient()) {
+            // We're doing a sync, so reset required flag
+
+            device.syncReq = false;
+
             // Reset polling interval on sync
             this.clearPolling();
 
@@ -335,6 +353,9 @@ class Anthbot extends utils.Adapter {
     // Poll device
     async pollDevice(device) {
         if (this.checkClient()) {
+            // Set device flag showing we are already in the middle of a poll so any syncDevice calls are processed after
+            device.inPoll = true;
+
             // Shadow state
             // Define here so we can use the Map area ID below to check for changes
             let shadowState;
@@ -366,6 +387,13 @@ class Anthbot extends utils.Adapter {
             await this.checkZoneMowing(device, shadowState, codeList);
 
             // TODO: Add something here if we are going to control scheduling
+
+            device.inPoll = false;
+        }
+
+        // If this poll actually generated a sync request do it now we've finished
+        if (device.syncReq) {
+            this.syncDevice(device);
         }
     }
 
@@ -403,14 +431,31 @@ class Anthbot extends utils.Adapter {
                     native: {},
                 });
 
-                const customAreaStates = [
+                const readOnlyStates = [
                     ['last_start', 'number', 'value.time', 'Start time of last job including this area'],
                     ['last_finish', 'number', 'value.time', 'End time of last job including this area'],
                     ['estimated_elapsed_time', 'number', 'time.span', 'Estimated elapsed time to mow this area', 's'],
                     //TODO: estimated battery required & some control states
                 ];
+                await this.createStatesFromList(customAreaChannelStateId, readOnlyStates);
 
-                await this.createStatesFromList(customAreaChannelStateId, customAreaStates);
+                const commandStates = [
+                    // Command buttons
+                    ['mow_start', 'boolean', 'button.start', 'Start a task mowing this single zone'],
+
+                    // List of alternating mow_head (aka. cutting direction) angles.
+                    // If set the adapter will move to the next angle in the list when mowing of
+                    // the given zone completes successfully.
+                    [
+                        'alt_mow_head',
+                        'string',
+                        'list',
+                        `Alternates for mow_head (cutting direction) setting (array of angles, e.g. '[0, 90, 120]')`,
+                    ],
+
+                    // TODO: 'smart scheduling' switch & other possibilities
+                ];
+                await this.createCommandStatesFromList(customAreaChannelStateId, commandStates);
             }
 
             // Go find all the custom area channels that aren't in the current list and delete them
@@ -487,6 +532,8 @@ class Anthbot extends utils.Adapter {
                     });
                 }
 
+                this.checkCustomAreaAlternates(device, shadowState.active_area.id);
+
                 // If this was a single zone, we can set the estimated time to complete
                 if (shadowState.active_area.id.length == 1) {
                     // TODO: make sure there were no errors between start and end codes
@@ -514,6 +561,38 @@ class Anthbot extends utils.Adapter {
                 // Not zonemowing (or charging part way through) but didn't find a "Task finished" code
                 this.log.warn('zonemowing looks done but no "Task finished" code found');
                 device.isZoneMowing = false;
+            }
+        }
+    }
+
+    async checkCustomAreaAlternates(device, customAreaIds) {
+        // Build an array of commands for area_set
+        const areaSetCommand = [];
+
+        for (const customAreaId of customAreaIds) {
+            const altMowHead = this.parseJsonList(
+                (await this.getStateAsync(`${device.sn}.map.custom_areas.${customAreaId}.alt_mow_head`))?.val,
+            );
+            // The check is for > 0, not > 1 because that way if there's a single alternate
+            // that doesn't match current value it will get set.
+            if (Array.isArray(altMowHead) && altMowHead.length > 0) {
+                const existingArea = device.customAreas.find(customArea => customArea.id == customAreaId);
+                if (!existingArea) {
+                    this.log.error(`Could not find custom area ID ${customAreaId} when checking alternates`);
+                } else {
+                    let setIndex = altMowHead.findIndex(angle => angle == existingArea.mow_head) + 1;
+                    if (setIndex > altMowHead.length) {
+                        // Wrap around to the first alternate
+                        setIndex = 0;
+                    }
+                    areaSetCommand.push([{ mow_head: altMowHead[setIndex], id: customAreaId }]);
+                }
+            }
+        }
+
+        if (areaSetCommand.length > 0) {
+            if (await this.doAreaSet(device, areaSetCommand)) {
+                this.syncDevice(device);
             }
         }
     }
@@ -562,7 +641,7 @@ class Anthbot extends utils.Adapter {
                 read: false,
                 write: true,
             };
-            await this.setObjectNotExistsAsync(`${prefix}.command.${state[0]}`, {
+            await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
                 type: 'state',
                 common,
                 native: {},
@@ -639,7 +718,7 @@ class Anthbot extends utils.Adapter {
             // For 'area_set'
             ['area_set', 'string', 'json', 'JSON object with custom area (aka. zone) information to write'],
         ];
-        await this.createCommandStatesFromList(device.sn, commandStates);
+        await this.createCommandStatesFromList(`${device.sn}.command`, commandStates);
     }
 
     // Helper function to set shadow state values
@@ -732,6 +811,12 @@ class Anthbot extends utils.Adapter {
 
         return outputAreas;
     }
+
+    /**
+     * Parses a JSON string into an array
+     * @param {StateValue | string | undefined} jsonString String to parse
+     * @returns {array | undefined} Parsed array if valid, otherwise undefined
+     */
 
     parseJsonList(jsonString) {
         let out;
