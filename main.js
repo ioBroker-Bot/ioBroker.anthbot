@@ -668,7 +668,7 @@ class Anthbot extends utils.Adapter {
                         await this.setStateChanged(
                             `${device.sn}.map.custom_areas.${singleAreaId}.estimated_elapsed_time`,
                             {
-                                val: endTime - Number(startTime),
+                                val: (endTime - Number(startTime)) / 1000,
                                 ack: true,
                             },
                         );
