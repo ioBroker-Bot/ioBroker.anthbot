@@ -541,7 +541,7 @@ class Anthbot extends utils.Adapter {
                     ['last_start', 'number', 'value.time', 'Start time of last job including this area'],
                     ['last_finish', 'number', 'value.time', 'End time of last job including this area'],
                     ['estimated_elapsed_time', 'number', 'time.span', 'Estimated elapsed time to mow this area', 's'],
-                    //TODO: estimated battery required & some control states
+                    //TODO: estimated battery required?
                 ];
                 await this.createStatesFromList(customAreaChannelStateId, readOnlyStates);
 
