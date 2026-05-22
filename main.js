@@ -158,15 +158,14 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'area_list': {
+                                // We never need to sync after this as no command will be sent
+                                doSync = false;
+
                                 let areaList;
                                 // This will affect the next start command only.
                                 if (typeof state?.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
-                                    try {
-                                        areaList = JSON.parse(state.val);
-                                    } catch (error) {
-                                        this.log.error(`Failed to parse area list for ${id}: ${error.message}`);
-                                    }
+                                    areaList = this.parseJsonList(state.val);
 
                                     // Make sure this is a list & is of valid custom or ridable area IDs
                                     if (
@@ -177,8 +176,9 @@ class Anthbot extends utils.Adapter {
                                             (await this.isGoodAreaList(device, device.ridableAreas, areaList))
                                         )
                                     ) {
-                                        // Set to null so we don't ack it
-                                        areaList = null;
+                                        // Set to undefined so we don't ack it
+                                        this.log.error(`Invalid area list in ${id}`);
+                                        areaList = undefined;
                                     }
                                 } else {
                                     // No value given, so ack an empty list
@@ -188,8 +188,64 @@ class Anthbot extends utils.Adapter {
                                 // Ack only if we now have a list
                                 if (Array.isArray(areaList)) {
                                     ackState = JSON.stringify(areaList);
-                                    // We don't need to sync after this as no command was actually sent yet
-                                    doSync = false;
+                                }
+
+                                break;
+                            }
+
+                            case 'alt_mow_head': {
+                                // By default we don't need to sync after this
+                                doSync = false;
+
+                                let altMowHeadList;
+                                if (typeof state?.val === 'string' && state.val !== '') {
+                                    // Some kind of non-blank value given
+                                    altMowHeadList = this.parseJsonList(state.val);
+
+                                    // Make sure this is a list of numbers between 0 & 180
+                                    if (
+                                        !altMowHeadList ||
+                                        !Array.isArray(altMowHeadList) ||
+                                        !altMowHeadList.every(
+                                            altMowHead => Number(altMowHead) >= 0 && Number(altMowHead) <= 180,
+                                        )
+                                    ) {
+                                        // Set to null so we don't ack it
+                                        this.log.error(`Invalid mow head list in ${id}`);
+                                        altMowHeadList = null;
+                                    }
+                                } else {
+                                    // No value given, so ack an empty list
+                                    altMowHeadList = [];
+                                }
+
+                                // Ack only if we now have a list
+                                if (Array.isArray(altMowHeadList)) {
+                                    ackState = JSON.stringify(altMowHeadList);
+
+                                    if (altMowHeadList.length > 0) {
+                                        // Make sure current mow_head is in this list, if not - set it ready for next task
+                                        const currentMowHead = device.customAreas.find(
+                                            area => area.id == customAreaId,
+                                        )?.mow_head;
+                                        if (!altMowHeadList.includes(currentMowHead)) {
+                                            // Current mow head is not in the new list, so set it to first entry
+                                            this.log.debug(
+                                                `Current mow head ${currentMowHead} is not in alt list, setting to first entry ${altMowHeadList[0]}`,
+                                            );
+                                            if (
+                                                await this.doAreaSet(device, [
+                                                    { mow_head: altMowHeadList[0], id: customAreaId },
+                                                ])
+                                            ) {
+                                                // We changed the current mow_head so sync needed
+                                                doSync = true;
+                                            } else {
+                                                this.log.error(`Failed to set first mow head entry for ${id}`);
+                                                ackState = undefined;
+                                            }
+                                        }
+                                    }
                                 }
 
                                 break;
