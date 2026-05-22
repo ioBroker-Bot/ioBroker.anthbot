@@ -69,8 +69,8 @@ class Anthbot extends utils.Adapter {
                 // and should be processed by the adapter
                 this.log.debug(`Command received for ${id}: ${JSON.stringify(state)}`);
 
-                // By default, set ackState null so we won't ack this
-                let ackState = null;
+                // By default, leave ackState undefined so we won't ack this
+                let ackState;
                 // By default sync afer valid command
                 let doSync = true;
 
@@ -78,16 +78,28 @@ class Anthbot extends utils.Adapter {
 
                 const command = idParts.pop();
 
-                // Remove 'command' string literal
-                idParts.pop();
+                // Next level is either 'command' string literal or a custom area ID
+                const customAreaId = Number(idParts.pop());
 
-                const serialNumber = idParts.pop();
+                let serialNumber;
+                if (!customAreaId) {
+                    // Must be a global command
+                    serialNumber = idParts.pop();
+                    this.log.debug(`Global command ${command} for ${serialNumber}`);
+                } else {
+                    // Must be a custom area command
+                    idParts.pop(); // Remove 'custom_areas' level
+                    idParts.pop(); // Remove 'map' level
+                    serialNumber = idParts.pop();
+                    this.log.debug(`Custom area command ${command} for ${serialNumber}/${customAreaId}`);
+                }
+
                 if (!serialNumber) {
                     this.log.error(`No serial number found in command ${id}`);
                 } else {
                     const device = this.devices.find(checkDevice => checkDevice.sn === serialNumber);
 
-                    if (!serialNumber || !device) {
+                    if (!device) {
                         this.log.error(`Could not find device for command with serial number: ${serialNumber}`);
                     } else {
                         switch (command) {
@@ -111,8 +123,17 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'custom_area_mow_start': {
-                                const goodAreaList = await this.isGoodAreaList(device, `map.custom_areas.raw`);
-                                if (goodAreaList) {
+                                // If customAreaId is valid then this is for specific area - pass that to isGoodAreaList
+                                // otherwise ommit that and the device's area_list will be used.
+                                const goodAreaList = await this.isGoodAreaList(
+                                    device,
+                                    device.customAreas,
+                                    customAreaId ? [customAreaId] : undefined,
+                                );
+
+                                if (!goodAreaList) {
+                                    this.log.error(`Derived invalid area list for command ${id}`);
+                                } else {
                                     this.log.info(
                                         `${device.alias}: custom_area_mow_start ${JSON.stringify(goodAreaList)}`,
                                     );
@@ -125,7 +146,7 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'ridable_mow_start': {
-                                const goodAreaList = await this.isGoodAreaList(device, `map.ridable_areas.raw`);
+                                const goodAreaList = await this.isGoodAreaList(device, device.ridableAreas);
                                 if (goodAreaList) {
                                     this.log.info(`${device.alias}: ridable_mow_start ${JSON.stringify(goodAreaList)}`);
                                     await this.client.asyncSendServiceCommand(serialNumber, 'ridable_mow_start', {
@@ -152,8 +173,8 @@ class Anthbot extends utils.Adapter {
                                         !areaList ||
                                         !Array.isArray(areaList) ||
                                         !(
-                                            (await this.isGoodAreaList(device, 'map.custom_areas.raw', areaList)) ||
-                                            (await this.isGoodAreaList(device, 'map.ridable_areas.raw', areaList))
+                                            (await this.isGoodAreaList(device, device.customAreas, areaList)) ||
+                                            (await this.isGoodAreaList(device, device.ridableAreas, areaList))
                                         )
                                     ) {
                                         // Set to null so we don't ack it
@@ -168,6 +189,23 @@ class Anthbot extends utils.Adapter {
                                 if (Array.isArray(areaList)) {
                                     ackState = JSON.stringify(areaList);
                                     // We don't need to sync after this as no command was actually sent yet
+                                    doSync = false;
+                                }
+
+                                break;
+                            }
+
+                            case 'mow_head_random': {
+                                if (state?.val) {
+                                    // Turned on, so randomise mow_head for this custom area
+                                    if (await this.doAreaSet(device, [this.randomMowHeadAreaCommand(customAreaId)])) {
+                                        // Area randmised successfully, ack 'On' value
+                                        ackState = true;
+                                    }
+                                } else {
+                                    // Just ack 'Off' value
+                                    ackState = false;
+                                    // We don't need to sync when turning off
                                     doSync = false;
                                 }
 
@@ -196,7 +234,7 @@ class Anthbot extends utils.Adapter {
                     }
 
                     // Ack command if verified valid above
-                    if (ackState) {
+                    if (typeof ackState != 'undefined') {
                         await this.setState(id, ackState, true);
 
                         // Sync device if no explicitally set not to
@@ -235,6 +273,12 @@ class Anthbot extends utils.Adapter {
             }
         }
         return success;
+    }
+
+    randomMowHeadAreaCommand(customAreaId) {
+        const randomAngle = Math.floor(Math.random() * 180);
+        this.log.debug(`New random mow_head for ${customAreaId}: ${randomAngle}`);
+        return { mow_head: randomAngle, id: customAreaId };
     }
 
     // Retry connection with backoff
@@ -408,19 +452,25 @@ class Anthbot extends utils.Adapter {
             const areaSetting = deviceMapFiles['area_setting.json'];
             this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
 
-            const customAreas = areaSetting?.content?.custom_areas;
-            this.log.debug(`custom_areas: ${JSON.stringify(customAreas)}`);
+            // Custom Areas (aka. zones)
+            device.customAreas = areaSetting?.content?.custom_areas;
+            this.log.debug(`custom_areas: ${JSON.stringify(device.customAreas)}`);
 
-            // Stash custom_areas in the passed device
-            device.customAreas = customAreas;
-
-            // And save the state
             this.setStateChanged(`${device.sn}.map.custom_areas.raw`, {
-                val: JSON.stringify(customAreas),
+                val: JSON.stringify(device.customAreas),
                 ack: true,
             });
 
-            for (const customArea of customAreas) {
+            // Ridable Areas (aka. edges)
+            device.ridableAreas = areaSetting?.content?.ridable_areas;
+            this.log.debug(`ridable_areas: ${JSON.stringify(device.ridableAreas)}`);
+
+            this.setStateChanged(`${device.sn}.map.ridable_areas.raw`, {
+                val: JSON.stringify(device.ridableAreas),
+                ack: true,
+            });
+
+            for (const customArea of device.customAreas) {
                 // Use setObject here so if the name changes online it gets updated in IoB
                 const customAreaChannelStateId = `${device.sn}.map.custom_areas.${customArea.id}`;
                 await this.setObject(customAreaChannelStateId, {
@@ -441,7 +491,10 @@ class Anthbot extends utils.Adapter {
 
                 const commandStates = [
                     // Command buttons
-                    ['mow_start', 'boolean', 'button.start', 'Start a task mowing this single zone'],
+                    ['custom_area_mow_start', 'boolean', 'button.start', 'Start a task mowing this single area'],
+
+                    // Set mow_head (cutting direction) randomly
+                    ['mow_head_random', 'boolean', 'switch.enable', 'Set mow_head (cutting direction) randomly'],
 
                     // List of alternating mow_head (aka. cutting direction) angles.
                     // If set the adapter will move to the next angle in the list when mowing of
@@ -463,7 +516,7 @@ class Anthbot extends utils.Adapter {
             this.log.debug(`Existing custom area channels: ${JSON.stringify(existingChannels)}`);
             for (const existingChannel of existingChannels) {
                 const channelId = existingChannel._id.split('.').pop();
-                if (!customAreas.find(area => area.id == channelId)) {
+                if (!device.customAreas.find(area => area.id == channelId)) {
                     this.log.debug(
                         `Deleting custom area channel ${existingChannel._id} as it's no longer in the map info`,
                     );
@@ -471,17 +524,27 @@ class Anthbot extends utils.Adapter {
                 }
             }
 
-            // Save ridable areas state
-            this.setStateChanged(`${device.sn}.map.ridable_areas.raw`, {
-                val: JSON.stringify(areaSetting?.content?.ridable_areas),
-                ack: true,
-            });
-
             const timeSetting = deviceMapFiles['time_setting.json'];
             this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
 
             // Only save the area_id after map load to use for check detection - it must have changed
             this.setState(mapAreaIdStateId, { val: areaId, ack: true });
+        } else {
+            // Map is unchanged
+            // If we have just started though, customAreas & ridableAreas won't be set so load them from saved states
+            if (!device.areasLoaded) {
+                device.customAreas = this.parseJsonList(
+                    (await this.getStateAsync(`${device.sn}.map.custom_areas.raw`))?.val,
+                );
+                this.log.debug(`Loaded customAreas from state: ${JSON.stringify(device.customAreas)}`);
+
+                device.ridableAreas = this.parseJsonList(
+                    (await this.getStateAsync(`${device.sn}.map.ridable_areas.raw`))?.val,
+                );
+                this.log.debug(`Loaded ridableAreas from state: ${JSON.stringify(device.ridableAreas)}`);
+
+                device.areasLoaded = true;
+            }
         }
     }
 
@@ -570,22 +633,29 @@ class Anthbot extends utils.Adapter {
         const areaSetCommand = [];
 
         for (const customAreaId of customAreaIds) {
-            const altMowHead = this.parseJsonList(
-                (await this.getStateAsync(`${device.sn}.map.custom_areas.${customAreaId}.alt_mow_head`))?.val,
+            const mowHeadRandomEnabled = this.parseJsonList(
+                (await this.getStateAsync(`${device.sn}.map.custom_areas.${customAreaId}.mow_head_random`))?.val,
             );
-            // The check is for > 0, not > 1 because that way if there's a single alternate
-            // that doesn't match current value it will get set.
-            if (Array.isArray(altMowHead) && altMowHead.length > 0) {
-                const existingArea = device.customAreas.find(customArea => customArea.id == customAreaId);
-                if (!existingArea) {
-                    this.log.error(`Could not find custom area ID ${customAreaId} when checking alternates`);
-                } else {
-                    let setIndex = altMowHead.findIndex(angle => angle == existingArea.mow_head) + 1;
-                    if (setIndex > altMowHead.length) {
-                        // Wrap around to the first alternate
-                        setIndex = 0;
+            if (mowHeadRandomEnabled) {
+                areaSetCommand.push(this.randomMowHeadAreaCommand(customAreaId));
+            } else {
+                const altMowHead = this.parseJsonList(
+                    (await this.getStateAsync(`${device.sn}.map.custom_areas.${customAreaId}.alt_mow_head`))?.val,
+                );
+                // The check is for > 0, not > 1 because that way if there's a single alternate
+                // that doesn't match current value it will get set.
+                if (Array.isArray(altMowHead) && altMowHead.length > 0) {
+                    const existingArea = device.customAreas.find(customArea => customArea.id == customAreaId);
+                    if (!existingArea) {
+                        this.log.error(`Could not find custom area ID ${customAreaId} when checking alternates`);
+                    } else {
+                        let setIndex = altMowHead.findIndex(angle => angle == existingArea.mow_head) + 1;
+                        if (setIndex > altMowHead.length) {
+                            // Wrap around to the first alternate
+                            setIndex = 0;
+                        }
+                        areaSetCommand.push({ mow_head: altMowHead[setIndex], id: customAreaId });
                     }
-                    areaSetCommand.push([{ mow_head: altMowHead[setIndex], id: customAreaId }]);
                 }
             }
         }
@@ -638,7 +708,7 @@ class Anthbot extends utils.Adapter {
                 type: state[1],
                 role: state[2],
                 desc: state[3],
-                read: false,
+                read: true,
                 write: true,
             };
             await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
@@ -849,26 +919,18 @@ class Anthbot extends utils.Adapter {
     /**
      *
      * @param {object} device Device object for the check or specific list
-     * @param {string} checkListStateId State ID holding raw JSON list to check against
-     * @param {array | null} passedToCheck Optional list to check instead of fetching from command state
+     * @param {array} checkAreas Array of valid area objects to check against
+     * @param {array | undefined} passedToCheck Optional list to check instead of fetching from command state
      * @returns {Promise<array | false>} List if good, false if not
      */
 
-    async isGoodAreaList(device, checkListStateId, passedToCheck = null) {
+    async isGoodAreaList(device, checkAreas, passedToCheck = undefined) {
         const listToCheck = passedToCheck
             ? passedToCheck
             : this.parseJsonList((await this.getStateAsync(`${device.sn}.command.area_list`))?.val);
 
         if (!listToCheck || !Array.isArray(listToCheck)) {
             this.log.error('Area list to check is not valid');
-            return false;
-        }
-
-        // Get IDs to check against
-        const checkAreas = this.parseJsonList((await this.getStateAsync(`${device.sn}.${checkListStateId}`))?.val);
-        // If we don't even have custom areas for our device any list is bad
-        if (!checkAreas) {
-            this.log.error(`Area list invalid: no IDs to check against in ${checkListStateId}`);
             return false;
         }
 
@@ -880,7 +942,7 @@ class Anthbot extends utils.Adapter {
                 }
             }
             // If we didn't continue, then we didn't find the area ID in our info list, so it's not good
-            this.log.warn(`Invalid custom area list: ${areaToCheck} not found in check list ${checkListStateId}`);
+            this.log.warn(`Invalid custom area list: ${areaToCheck} not found in check list`);
             return false;
         }
 
@@ -890,6 +952,8 @@ class Anthbot extends utils.Adapter {
     subscribeToDevice(device) {
         this.log.debug(`Subscribing to command states for ${device.sn}`);
         this.subscribeStates(`${device.sn}.command.*`);
+        // TODO: be more selective about custom_areas?
+        this.subscribeStates(`${device.sn}.map.custom_areas.*`);
     }
 
     /**
