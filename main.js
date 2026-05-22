@@ -676,7 +676,7 @@ class Anthbot extends utils.Adapter {
                 }
 
                 device.isZoneMowing = false;
-            } else if (shadowState.mode.value != 'zonemowing' && shadowState.mode.value != 'charge') {
+            } else if (!['zonemowing', 'backtodock', 'charge'].includes(shadowState.mode.value)) {
                 // Not zonemowing (or charging part way through) but didn't find a "Task finished" code
                 this.log.warn('zonemowing looks done but no "Task finished" code found');
                 device.isZoneMowing = false;
