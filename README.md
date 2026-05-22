@@ -15,7 +15,7 @@
 
 Connect with Anthbot devices such as their robot mowers.
 
-### Monitoring
+### Global monitoring
 
 Battery level is reported in the `elec` state.
 
@@ -25,7 +25,9 @@ The last status message & it's severity (event, error, etc) are shown in the `la
 
 The rest of the states should be self explanatory.
 
-### Commands
+### Global commands
+
+Under the `command` folder:
 
 `stop_all_tasks` equates to hiting 'Stop' in the Anthbot app.
 
@@ -33,16 +35,36 @@ The rest of the states should be self explanatory.
 
 `mow_start` equates to start when in 'Full maps' mode.
 
-`custom_area_mow_start` equates to custom area (aka 'Zones') mode. For this to work a valid list of area IDs must already be set in the `area_list` state. Area IDs are not the same as names the Anthbot app shows. Valid area IDs can be found as channel IDs under the `map.custom_areas...` folder. A channel ID exists for each area.
+`custom_area_mow_start` equates to custom area (aka 'Zones') mode. For this to work a valid list of area IDs must already be set in the `area_list` state. Area IDs are not the same as names the Anthbot app shows. Valid area IDs can be found as channel IDs under the `map.custom_areas...` folder. A channel ID exists for each area, see below for details of states within.
 
 Ie. to start mowing one or more zones:
 
 - Set the `area_list` state to an array of IDs. Eg: `[102, 117]`
 - Trigger the `custom_area_mow_start` state.
 
-The adapter will attempt to determine when zone mowing is in progress and make a note in the relevant `map.custom_areas...` channel of start and finish times to understand how often zones are being cut. 
+The adapter will attempt to determine when zone mowing is in progress and make a note in the relevant `map.custom_areas...` channel of start and finish times to understand how often zones are being cut.
 
 `ridable_mow_start` equates to edge mowing mode. As with `custom_area_mow_start`, set the `area_list` with a valid list of ridable areas (aka. edge) IDs. Valid ridable area IDs can be found in the `map.ridable_areas.raw` state.
+
+### Custom Area (aka. zone) monitoring & control
+
+Under each `map.custom_areas...` channel:
+
+#### Monitoring
+
+`last_start`, `last_finish`, `estimated_elapsed_time` are provided to help scheduling. These states are set when mowing tasks involving the relevant custom area start and finish.
+
+Note that `estimated_elapsed_time` can only be calculated when a task with a single custom area is completeled. If a task involving multiple areas is started they will all get the same start & finish time and no estimate of elapsed time will be made.
+
+#### Commands
+
+`custom_area_mow_start` button can be used as a shortcut to trigger mowing of just this single area.
+
+`mow_head_random` switch, when enabled, randomises the `mow_head` (aka. cutting angle) for this area. It is randomised each time this switch is turned on, and each time a mowing task for this area is finished successfully.
+
+`alt_mow_head` is an array of `mow_head` angles to cycle through each time a mowing task for this area is finished successfully. When the list is set, if the current `mow_head` for this area is not in the list, it will be set to the first entry. To disable this feature set a blank array (`[]`) or empty string.
+
+Note that `mow_head_random` takes priority over `alt_mow_head`.
 
 ### Map & area (aka. zone) editing
 
@@ -59,7 +81,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 ### **WORK IN PROGRESS**
 
-- (raintonr) Improved map change detection on startup
+- (raintonr) Improved map change detection
 - (raintonr) Added custom_area channels, monitoring & control
 
 ### 0.0.5 (2026-05-20)
