@@ -78,6 +78,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
 ### 0.0.6 (2026-05-22)
 
 - (raintonr) Improved map change detection
@@ -101,6 +102,8 @@ Note that when using `area_set` it is not necessary to define all parameters and
 ### 0.0.2 (2026-04-25)
 
 - (raintonr) initial release
+
+[Older changelogs can be found here](CHANGELOG_OLD.md)
 
 ## License
 
