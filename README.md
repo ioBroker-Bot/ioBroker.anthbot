@@ -11,9 +11,13 @@
 
 **Tests:** ![Test and Release](https://github.com/iobroker-community-adapters/ioBroker.anthbot/workflows/Test%20and%20Release/badge.svg)
 
-## anthbot adapter for ioBroker
+## Anthbot adapter for ioBroker
 
 Connect with Anthbot devices such as their robot mowers.
+
+After installation visit the instance settings page to add credentials for access to Anthbot cloud. The adapter will monitor & control the first device it discovers on the account.
+
+The adapter can attempt to improve on the default scheduling of the Anthbot app. By default nothing will happen but this feature can be enabled by set scheduling states under `map.custom_areas...` after starting the adapter (see below).
 
 ### Global monitoring
 
@@ -66,6 +70,22 @@ Note that `estimated_elapsed_time` can only be calculated when a task with a sin
 
 Note that `mow_head_random` takes priority over `alt_mow_head`.
 
+#### Scheduling
+
+`schedule_enabled` is used to activate ioBroker initiated mowing of this area. While this _should_ work in conjunction with the Anthbot schedule maybe it is best to delete or disable all Anthbot schedules prior to using this feature.
+
+Note that in order to enable scheduled mowing of an area:
+
+- `schedule_enabled` must be turned on
+- `schedule_days_since_last` & `schedule_priority` must both be set with valid numbers
+- the area must have a valid `last_finish` state
+
+In order to achieve the last point it is is best to manually start 'Zone Mowing' in the Anthbot app and let that task complete.
+
+`schedule_days_since_last` is used to determine when each area needs mowing. The number of days to wait between mowing. Zero indicates cut every day.
+
+`schedule_priority` comes into play when multiple areas need mowing: lowest number (must be 1 or greater) is handled first. When two areas with the same priority both need mowing the order is undefined.
+
 ### Map & area (aka. zone) editing
 
 With `area_set` it is possible to edit one or more areas. Take the JSON representation from a desired entry from the `map.custom_areas.raw_list`, modify it as required and save this the `area_set` state as a JSON array.
@@ -78,6 +98,10 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- (raintonr) Add zone scheduling (#11)
 
 ### 0.0.6 (2026-05-22)
 
