@@ -524,9 +524,9 @@ class Anthbot extends utils.Adapter {
 
             await this.checkMapUpdates(device);
 
-            await this.checkZoneMowing(device);
+            await this.checkCustomAreaMowing(device);
 
-            await this.checkZoneSchedule(device);
+            await this.checkCustomAreaSchedule(device);
 
             device.inPoll = false;
 
@@ -539,9 +539,15 @@ class Anthbot extends utils.Adapter {
 
     async checkMapUpdates(device) {
         const mapAreaIdStateId = `${device.sn}.map.area_id`;
-        if (this.checkClient() && device.shadowState.map.area_id != (await this.getStateAsync(mapAreaIdStateId))?.val) {
+        if (
+            this.checkClient() &&
+            (!device.mapLoaded /* Force load at startup */ ||
+                device.shadowState.map.area_id != (await this.getStateAsync(mapAreaIdStateId))?.val)
+        ) {
             // areaId does not match from time of last fetch so we need to update map
-            this.log.info(`Device map area_id change detected, fetching new map info`);
+            this.log.info(
+                `${!device.mapLoaded ? 'Startup' : 'Device map area_id change detected'}, fetching new map info`,
+            );
 
             const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
 
@@ -581,7 +587,7 @@ class Anthbot extends utils.Adapter {
                     ['last_start', 'number', 'value.time', 'Start time of last job including this area'],
                     ['last_finish', 'number', 'value.time', 'End time of last job including this area'],
                     ['estimated_elapsed_time', 'number', 'time.span', 'Elapsed time to mow this area', 's'],
-                    //TODO: estimated battery required?
+                    ['estimated_elec', 'number', 'value.battery', 'Elec (battery) used mowingthis area', '%'],
                 ];
                 await this.createStatesFromList(customAreaChannelStateId, readOnlyStates);
 
@@ -594,7 +600,7 @@ class Anthbot extends utils.Adapter {
 
                     // List of alternating mow_head (aka. cutting direction) angles.
                     // If set the adapter will move to the next angle in the list when mowing of
-                    // the given zone completes successfully.
+                    // the given custom area completes successfully.
                     [
                         'alt_mow_head',
                         'string',
@@ -633,23 +639,7 @@ class Anthbot extends utils.Adapter {
 
             // Only save the area_id after map load to use for check detection - it must have changed
             this.setState(mapAreaIdStateId, { val: device.shadowState.map.area_id, ack: true });
-        } else {
-            // Map is unchanged
-            // If we have just started though, customAreas & ridableAreas won't be set so load them from saved states
-            if (!device.areasLoaded) {
-                device.customAreas = this.parseJsonList(
-                    (await this.getStateAsync(`${device.sn}.map.custom_areas.raw`))?.val,
-                );
-                await this.populateDeviceFromStates(device);
-                this.log.debug(`Loaded customAreas from states: ${JSON.stringify(device.customAreas)}`);
-
-                device.ridableAreas = this.parseJsonList(
-                    (await this.getStateAsync(`${device.sn}.map.ridable_areas.raw`))?.val,
-                );
-                this.log.debug(`Loaded ridableAreas from state: ${JSON.stringify(device.ridableAreas)}`);
-
-                device.areasLoaded = true;
-            }
+            device.mapLoaded = true;
         }
     }
 
@@ -658,30 +648,47 @@ class Anthbot extends utils.Adapter {
     // even worse for the user so keep lower camelCase in the code and underscores
     // in state IDs.
     //
-    // At least we can use this mapping to both save and load.
-    customAreaPropertyToStateId = {
-        lastFinish: 'last_finish',
-        lastStart: 'last_start',
-        estimatedElapsedTime: 'estimated_elapsed_time',
-        mowHeadRandom: 'mow_head_random',
-        scheduleEnabled: 'schedule_enabled',
-        schedulePriority: 'schedule_priority',
-        scheduleDaysSinceLast: 'schedule_days_since_last',
-    };
+    // Use camelCase <-> underscore_case conversion between state IDs & properties.
+
+    camelToUnderscoreCase(key) {
+        return key.replace(/([A-Z])/g, '_$1').toLowerCase();
+    }
+
+    underscoreToCamelCase(key) {
+        return key.replace(/_([a-z])/g, function f(char) {
+            return char[1].toUpperCase();
+        });
+    }
 
     /**
      * populateCustomAreasFromStates - Load states for custom areas on a device after new map load.
-     * This is mainly so we don't have to keep loading the last_finish state when checking schedule.
+     * This is mainly so we don't have to repeated load them when checking schedule.
      *
      * @param {object} device Device object to populate
      */
     async populateDeviceFromStates(device) {
-        for (const customArea of device.customAreas) {
-            const customAreaChannelStateId = `${device.sn}.map.custom_areas.${customArea.id}`;
+        // TODO: can't get getStatesOfAsync to filter for each customArea so fetch them all & filter ourselves
+        const deviceStates = await this.getStatesOfAsync(device.sn);
+        this.log.debug(`deviceStates for ${device.sn}: ${JSON.stringify(deviceStates)}`);
 
-            for (const [propertyName, stateId] of Object.entries(this.customAreaPropertyToStateId)) {
-                // Populate in the passed in device object
-                customArea[propertyName] = (await this.getStateAsync(`${customAreaChannelStateId}.${stateId}`))?.val;
+        for (const customArea of device.customAreas) {
+            const customAreaStates = deviceStates.filter(state => {
+                const idParts = state._id.split('.');
+                idParts.pop(); // Remove ID
+                return idParts.pop() == customArea.id;
+            });
+            this.log.debug(
+                `customAreaStates for ${device.sn}.map.custom_areas.${customArea.id}: ${JSON.stringify(customAreaStates)}`,
+            );
+
+            for (const state of customAreaStates) {
+                const stateId = state._id.split('.').pop();
+                const propertyName = this.underscoreToCamelCase(stateId);
+                if (stateId && propertyName) {
+                    // Populate in the passed in device object
+                    customArea[propertyName] = (await this.getStateAsync(state._id))?.val;
+                    this.log.debug(`loadded ${propertyName} : ${customArea[propertyName]}`);
+                }
             }
         }
     }
@@ -700,38 +707,33 @@ class Anthbot extends utils.Adapter {
             this.log.error(`Unknown custom area ID: ${customAreaId}`);
         } else {
             const propertyName = Object.keys(propertyObject)[0];
-            const stateId = this.customAreaPropertyToStateId[propertyName];
-
-            if (!stateId) {
-                this.log.error(`Unknown state ID for custom area property: ${propertyName}`);
-            } else {
-                const val = propertyObject[propertyName];
-                await this.setStateChanged(`${device.sn}.map.custom_areas.${customAreaId}.${stateId}`, {
-                    val,
-                    ack: true,
-                });
-                customArea[propertyName] = val;
-            }
+            const stateId = this.camelToUnderscoreCase(propertyName);
+            const val = propertyObject[propertyName];
+            await this.setStateChanged(`${device.sn}.map.custom_areas.${customAreaId}.${stateId}`, {
+                val,
+                ack: true,
+            });
+            customArea[propertyName] = val;
         }
     }
 
-    async checkZoneMowing(device) {
+    async checkCustomAreaMowing(device) {
         // Figure out if device has just started/finished a custom area task & set states accordingly
         if (
             Array.isArray(device.codeList) &&
-            !device.isZoneMowing &&
+            !device.isCustomAreaMowing &&
             device.shadowState.mode.value == 'zonemowing' &&
             Array.isArray(device.shadowState.active_area.id)
         ) {
-            // Currently mowing at least one zone
-            device.isZoneMowing = true;
+            // Currently mowing at least one custom area
+            device.isCustomAreaMowing = true;
 
             // Go find the last "The robot is going to the designated area to mow" code (#1018) to get timestamp
             const startCode = device.codeList.find(code => code.code === 1018);
             if (!startCode) {
-                this.log.warn('Could not find start code while zone mowing');
+                this.log.warn('Could not find start code while custom area mowing');
             } else {
-                this.log.debug(`startCode for zone mowing: ${JSON.stringify(startCode)}`);
+                this.log.debug(`startCode for custom area mowing: ${JSON.stringify(startCode)}`);
                 // Add 'Z' because the time is UTC
                 const lastStart = Date.parse(`${startCode.create_time}Z`);
 
@@ -739,10 +741,24 @@ class Anthbot extends utils.Adapter {
                 for (const activeAreaId of device.shadowState.active_area.id) {
                     await this.setDeviceCustomAreaProperty(device, activeAreaId, { lastStart });
                 }
+
+                // If start time is close (within 2 * polling interval) track battery for estimate
+                if (Date.now() - lastStart < POLLING_INTERVAL * 2 * 1000) {
+                    // Keep count of how much 'elec' changes during this task.
+                    // Not ideal, but as we poll regularly probably easier than taking
+                    // a start and end value and trying to account for charging, etc.
+                    device.customAreaMowingElec = 0;
+                    device.lastElec = device.shadowState.elec.value;
+
+                    this.log.debug(`Caught custom area mowing task in time to monitor elec: ${device.lastElec}`);
+                } else {
+                    // We have noticed this start event too late to monitor battery
+                    device.customAreaMowingElec = undefined;
+                }
             }
         } else if (
             Array.isArray(device.codeList) &&
-            device.isZoneMowing &&
+            device.isCustomAreaMowing &&
             Array.isArray(device.shadowState.active_area.id)
         ) {
             // If we can find a "Task finished" code (#1014) before (which is chronologically after)
@@ -750,7 +766,7 @@ class Anthbot extends utils.Adapter {
             const startIndex = device.codeList.findIndex(code => code.code === 1018);
             const endIndex = device.codeList.findIndex(code => code.code === 1014);
             if (endIndex >= 0 && (endIndex < startIndex || startIndex === -1)) {
-                this.log.debug('Zone mowing end code found');
+                this.log.debug('Custom area mowing end code found');
 
                 // Add 'Z' because the time is UTC
                 const lastFinish = Date.parse(`${device.codeList[endIndex].create_time}Z`);
@@ -760,28 +776,47 @@ class Anthbot extends utils.Adapter {
                     await this.setDeviceCustomAreaProperty(device, activeAreaId, { lastFinish });
                 }
 
-                this.checkCustomAreaAlternates(device);
-
-                // If this was a single zone, we can set the estimated time to complete
+                // If this was a single custom area, we can set the estimated time to complete
                 if (device.shadowState.active_area.id.length == 1) {
                     // TODO: make sure there were no errors between start and end codes
                     // TODO: make sure battery was close to full when starting
                     // TODO: possibly throw this number away when area vertexes change
                     const singleAreaId = device.shadowState.active_area.id[0];
-                    const startTime = device.customAreas[singleAreaId].lastStart;
-                    if (!startTime || !(Number(startTime) > 0)) {
-                        this.log.warn(`Single area ID ${singleAreaId} has no start time`);
+                    const singleArea = device.customAreas.find(customArea => customArea.id == singleAreaId);
+                    if (!singleArea) {
+                        this.log.error(`Could not find custom area ID ${singleAreaId} when checking alternates`);
                     } else {
-                        const estimatedElapsedTime = (lastFinish - Number(startTime)) / 1000;
-                        await this.setDeviceCustomAreaProperty(device, singleAreaId, { estimatedElapsedTime });
+                        const startTime = singleArea.lastStart;
+                        if (!startTime || !(Number(startTime) > 0)) {
+                            this.log.warn(`Single area ID ${singleAreaId} has no start time`);
+                        } else {
+                            const estimatedElapsedTime = (lastFinish - Number(startTime)) / 1000;
+                            await this.setDeviceCustomAreaProperty(device, singleAreaId, { estimatedElapsedTime });
+                        }
+
+                        if (typeof device.customAreaMowingElec == 'number') {
+                            // We have been tracking elec (battery) usage so record that
+                            const estimatedElec = device.customAreaMowingElec;
+                            await this.setDeviceCustomAreaProperty(device, singleAreaId, { estimatedElec });
+                        }
                     }
                 }
 
-                device.isZoneMowing = false;
+                this.checkCustomAreaAlternates(device);
+
+                device.isCustomAreaMowing = false;
             } else if (!['zonemowing', 'backtodock', 'charge'].includes(device.shadowState.mode.value)) {
-                // Not zonemowing (or charging part way through) but didn't find a "Task finished" code
-                this.log.warn('zonemowing looks done but no "Task finished" code found');
-                device.isZoneMowing = false;
+                // Not custom area mowing (or charging part way through) but didn't find a "Task finished" code
+                this.log.warn('Custom area mowing looks done but no "Task finished" code found');
+                device.isCustomAreaMowing = false;
+            } else if (
+                typeof device.customAreaMowingElec == 'number' &&
+                device.lastElec > device.shadowState.elec.value
+            ) {
+                // Device is still custom area mowing and has a reduced 'elec' (battery) level
+                device.customAreaMowingElec += device.lastElec - device.shadowState.elec.value;
+                device.lastElec = device.shadowState.elec.value;
+                this.log.debug(`Custom area mowing task has now consumed ${device.customAreaMowingElec} elec`);
             }
         }
     }
@@ -826,15 +861,19 @@ class Anthbot extends utils.Adapter {
     }
 
     /**
-     * Iterate through custom areas and commence zone mowing task if applicable
+     * Iterate through custom areas and commence custom area mowing task if applicable
      *
      * @param {object} device Device object to schedule
      */
-    async checkZoneSchedule(device) {
+    async checkCustomAreaSchedule(device) {
         // TODO: improve the battery state check?
-        if (device.shadowState.mode.value == 'charge' && !device.isZoneMowing && device.shadowState.elec.value > 95) {
+        if (
+            device.shadowState.mode.value == 'charge' &&
+            !device.isCustomAreaMowing &&
+            device.shadowState.elec.value > 95
+        ) {
             // Device is charging so available to start
-            this.log.debug(`checkZoneSchedule...`);
+            this.log.debug(`checkCustomAreaSchedule...`);
 
             // Get the start of today in ms
             const today0000 = new Date();

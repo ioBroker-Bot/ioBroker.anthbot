@@ -56,9 +56,9 @@ Under each `map.custom_areas...` channel:
 
 #### Monitoring
 
-`last_start`, `last_finish`, `estimated_elapsed_time` are provided to help scheduling. These states are set when mowing tasks involving the relevant custom area start and finish.
+`last_start`, `last_finish`, `estimated_elapsed_time` & `estimated_elec` are provided to help scheduling. These states are set when mowing tasks involving the relevant custom area start and finish.
 
-Note that `estimated_elapsed_time` can only be calculated when a task with a single custom area is completeled. If a task involving multiple areas is started they will all get the same start & finish time and no estimate of elapsed time will be made.
+Note that `estimated_elapsed_time` & `estimated_elec` can only be calculated when a task with a single custom area is completeled. If a task involving multiple areas is started they will all get the same start & finish time and no estimate of elapsed time will be made.
 
 #### Commands
 
@@ -80,7 +80,7 @@ Note that in order to enable scheduled mowing of an area:
 - `schedule_days_since_last` & `schedule_priority` must both be set with valid numbers
 - the area must have a valid `last_finish` state
 
-In order to achieve the last point it is is best to manually start 'Zone Mowing' in the Anthbot app and let that task complete.
+In order to achieve the last point it is is best to manually start 'Zone Mowing' in the Anthbot app and let that task complete while this adapter is running.
 
 `schedule_days_since_last` is used to determine when each area needs mowing. The number of days to wait between mowing. Zero indicates cut every day.
 
