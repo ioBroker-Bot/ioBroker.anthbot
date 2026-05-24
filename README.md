@@ -101,7 +101,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 ### **WORK IN PROGRESS**
 
-- (raintonr) Add zone scheduling (#11)
+- (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
 
 ### 0.0.6 (2026-05-22)
 
