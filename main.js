@@ -8,8 +8,13 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 
-// Load your modules here, e.g.:
+// Our custom modules
 const { AnthbotCloudApiClient } = require('./lib/anthbotApi');
+const SunCalc = require('suncalc3');
+
+// TODO: Constants that should maybe be configurable?
+const SCHEDULE_MS_WAIT_AFTER_DAWN = 3 * 60 * 60 * 1000; // 3 hours after dawn
+const SCHEDULE_MS_REQUIRED_FOR_UNKNOWN_CUSTOM_AREA = 4 * 60 * 60 * 1000; // Require at least 4 hours
 const POLLING_INTERVAL = 60 * 1000; // Poll every 60 seconds
 const CONNECTION_RETRY_INTERVAL = 30 * 1000; // Starting retry interval
 const CONNECTION_RETRY_BACKOFF = 2; // Exponential backoff factor for connection retries
@@ -44,8 +49,11 @@ class Anthbot extends utils.Adapter {
      * Is called when databases are connected and adapter received configuration.
      */
     async onReady() {
-        // Initialize your adapter here
+        // Not connected by default
         await this.setConnected(false);
+
+        // Load system.config as lat/lon are required for dawn/dusk calculation
+        this.sysConfig = await this.getForeignObjectAsync('system.config');
 
         // Verify we have credentials
         if (this.config.username == '' || this.config.password == '' || !this.config.regionCode) {
@@ -871,54 +879,80 @@ class Anthbot extends utils.Adapter {
      * @param {object} device Device object to schedule
      */
     async checkCustomAreaSchedule(device) {
-        // TODO: improve the battery state check?
         if (
             device.shadowState.mode.value == 'charge' &&
             !device.isCustomAreaMowing &&
+            // TODO: improve the battery state check?
             device.shadowState.elec.value > 95
         ) {
-            // Device is charging so available to start
-            this.log.debug(`checkCustomAreaSchedule...`);
+            // Device is available to start work
+            this.log.debug(`checkCustomAreaSchedule... device available`);
 
-            // Get the start of today in ms
-            const today0000 = new Date();
-            today0000.setHours(0, 0, 0, 0);
+            // Get dawn/dusk times to figure out if a task should start though
+            const now = new Date();
+            const suncalcTimes = SunCalc.getSunTimes(
+                now,
+                this.sysConfig?.common.latitude,
+                this.sysConfig?.common.longitude,
+            );
 
-            let startAreaId;
-            let startPriority;
-            for (const customArea of device.customAreas) {
-                if (!startAreaId || !startPriority || customArea.schedulePriority < startPriority) {
-                    // No area found yet, or this one has a better (lower) priority
-                    this.log.debug(
-                        `scheduleDaysSinceLast/lastStart/lastFinish for ${customArea.id}: ${customArea.scheduleDaysSinceLast}/${customArea.lastStart}/${customArea.lastFinish}`,
-                    );
+            if (
+                now.getTime() > suncalcTimes.civilDawn.ts + SCHEDULE_MS_WAIT_AFTER_DAWN &&
+                now.getTime() < suncalcTimes.civilDusk.ts
+            ) {
+                this.log.debug(`checkCustomAreaSchedule... time now is between dawn & dusk`);
 
-                    if (
-                        customArea.scheduleEnabled &&
-                        Number(customArea.scheduleDaysSinceLast) >= 0 &&
-                        customArea.lastFinish > 0 &&
-                        !(Number(customArea.lastStart) > today0000.getTime())
-                    ) {
-                        // The area has schedule enabled and a valid lastFinish
+                // Get the start of today in ms
+                const today0000 = new Date(now);
+                today0000.setHours(0, 0, 0, 0);
 
-                        const lastFinishPlusDaysSinceMs =
-                            customArea.lastFinish + customArea.scheduleDaysSinceLast * 24 * 60 * 60 * 1000;
-                        this.log.debug(
-                            `Last finish + offset for ${customArea.id}: ${lastFinishPlusDaysSinceMs} (? < ${today0000.getTime()})`,
-                        );
+                let startAreaId;
+                let startPriority;
+                for (const customArea of device.customAreas) {
+                    if (!startAreaId || !startPriority || customArea.schedulePriority < startPriority) {
+                        // No area found yet, or this one has a better (lower) priority
+                        if (
+                            customArea.scheduleEnabled &&
+                            Number(customArea.scheduleDaysSinceLast) >= 0 &&
+                            customArea.lastFinish > 0 &&
+                            !(Number(customArea.lastStart) > today0000.getTime())
+                        ) {
+                            // The area has schedule enabled and a valid lastFinish
+                            this.log.debug(
+                                `scheduleDaysSinceLast/lastStart/lastFinish for ${customArea.id}: ${customArea.scheduleDaysSinceLast}/${customArea.lastStart}/${customArea.lastFinish}`,
+                            );
 
-                        if (lastFinishPlusDaysSinceMs < today0000.getTime()) {
-                            this.log.debug(`Schedule task for area ID ${customArea.id}`);
-                            startAreaId = customArea.id;
-                            startPriority = customArea.schedulePriority;
+                            const lastFinishPlusDaysSinceMs =
+                                customArea.lastFinish + customArea.scheduleDaysSinceLast * 24 * 60 * 60 * 1000;
+                            this.log.debug(
+                                `Last finish + offset for ${customArea.id}: ${lastFinishPlusDaysSinceMs} (? < ${today0000.getTime()})`,
+                            );
+
+                            if (lastFinishPlusDaysSinceMs < today0000.getTime()) {
+                                this.log.debug(`Task required for area ID ${customArea.id}...`);
+                                let msRequired = Number(customArea.estimatedElapsedTime);
+                                if (!msRequired) {
+                                    msRequired = SCHEDULE_MS_REQUIRED_FOR_UNKNOWN_CUSTOM_AREA;
+                                    this.log.debug(
+                                        `No estimate of elapsed time for area ID ${customArea.id}, defaulting to ${msRequired}`,
+                                    );
+                                }
+                                if (now.getTime() + msRequired > suncalcTimes.civilDusk.ts) {
+                                    this.log.debug(`Not enough time before dusk for area ID ${customArea.id}`);
+                                } else {
+                                    this.log.debug(`Schedule task for area ID ${customArea.id}`);
+                                    startAreaId = customArea.id;
+                                    startPriority = customArea.schedulePriority;
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            if (startAreaId) {
-                await this.doCustomAreaMowStart(device, [startAreaId]);
-                this.syncDevice(device);
+                if (startAreaId) {
+                    await this.doCustomAreaMowStart(device, [startAreaId]);
+                    this.syncDevice(device);
+                }
             }
         }
     }
