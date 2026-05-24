@@ -103,52 +103,21 @@ class Anthbot extends utils.Adapter {
                         this.log.error(`Could not find device for command with serial number: ${serialNumber}`);
                     } else {
                         switch (command) {
-                            case 'area_set': {
-                                let customAreas;
-                                if (typeof state?.val !== 'string') {
-                                    this.log.error('Command custom_areas for ${serialNumber} is not a string');
-                                } else {
-                                    try {
-                                        customAreas = JSON.parse(state.val);
-                                    } catch (error) {
-                                        this.log.error(`Failed to parse for ${id}: ${error.message}`);
-                                    }
-                                }
+                            // Global commands
 
-                                if (await this.doAreaSet(device, customAreas)) {
-                                    ackState = JSON.stringify(customAreas);
-                                }
+                            case 'mow_start':
+                                // To start mowing have to put app_state first.
+                                await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
+                            // Purposfully fall through to send the actual command!
 
-                                break;
-                            }
-
-                            case 'custom_area_mow_start': {
-                                // If customAreaId is valid then this is for specific area - pass that to isGoodAreaList
-                                // otherwise ommit that and the device's area_list will be used.
-                                const goodAreaList = await this.isGoodAreaList(
-                                    device,
-                                    device.customAreas,
-                                    customAreaId ? [customAreaId] : undefined,
-                                );
-
-                                if (!goodAreaList) {
-                                    this.log.error(`Derived invalid area list for command ${id}`);
-                                } else {
-                                    await this.doCustomAreaMowStart(device, goodAreaList);
-                                    ackState = true;
-                                }
-                                break;
-                            }
-
-                            case 'ridable_mow_start': {
-                                const goodAreaList = await this.isGoodAreaList(device, device.ridableAreas);
-                                if (goodAreaList) {
-                                    this.log.info(`${device.alias}: ridable_mow_start ${JSON.stringify(goodAreaList)}`);
-                                    await this.client.asyncSendServiceCommand(serialNumber, 'ridable_mow_start', {
-                                        id: goodAreaList,
-                                    });
-                                    ackState = true;
-                                }
+                            // Generic one-shot commands
+                            /* falls through */
+                            case 'charge_start':
+                            case 'mow_pause':
+                            case 'stop_all_tasks': {
+                                this.log.info(`${device.alias}: ${command}`);
+                                await this.client.asyncSendServiceCommand(serialNumber, command, 1);
+                                ackState = true;
                                 break;
                             }
 
@@ -188,59 +157,112 @@ class Anthbot extends utils.Adapter {
                                 break;
                             }
 
+                            case 'area_set': {
+                                let customAreas;
+                                if (typeof state?.val !== 'string') {
+                                    this.log.error('Command custom_areas for ${serialNumber} is not a string');
+                                } else {
+                                    try {
+                                        customAreas = JSON.parse(state.val);
+                                    } catch (error) {
+                                        this.log.error(`Failed to parse for ${id}: ${error.message}`);
+                                    }
+                                }
+
+                                if (await this.doAreaSet(device, customAreas)) {
+                                    ackState = JSON.stringify(customAreas);
+                                }
+
+                                break;
+                            }
+
+                            // Can be global or for custom area
+
+                            case 'custom_area_mow_start': {
+                                // If customAreaId is valid then this is for specific area - pass that to isGoodAreaList
+                                // otherwise ommit that and the device's area_list will be used.
+                                const goodAreaList = await this.isGoodAreaList(
+                                    device,
+                                    device.customAreas,
+                                    customAreaId ? [customAreaId] : undefined,
+                                );
+
+                                if (!goodAreaList) {
+                                    this.log.error(`Derived invalid area list for command ${id}`);
+                                } else {
+                                    await this.doCustomAreaMowStart(device, goodAreaList);
+                                    ackState = true;
+                                }
+                                break;
+                            }
+
+                            case 'ridable_mow_start': {
+                                const goodAreaList = await this.isGoodAreaList(device, device.ridableAreas);
+                                if (goodAreaList) {
+                                    this.log.info(`${device.alias}: ridable_mow_start ${JSON.stringify(goodAreaList)}`);
+                                    await this.client.asyncSendServiceCommand(serialNumber, 'ridable_mow_start', {
+                                        id: goodAreaList,
+                                    });
+                                    ackState = true;
+                                }
+                                break;
+                            }
+
+                            // Commands for custom area only
+
                             case 'alt_mow_head': {
                                 // By default we don't need to sync after this
                                 doSync = false;
 
-                                let altMowHeadList;
+                                let altMowHead;
                                 if (typeof state?.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
-                                    altMowHeadList = this.parseJsonList(state.val);
+                                    altMowHead = this.parseJsonList(state.val);
 
                                     // Make sure this is a list of numbers between 0 & 180
                                     if (
-                                        !altMowHeadList ||
-                                        !Array.isArray(altMowHeadList) ||
-                                        !altMowHeadList.every(
+                                        !altMowHead ||
+                                        !Array.isArray(altMowHead) ||
+                                        !altMowHead.every(
                                             altMowHead => Number(altMowHead) >= 0 && Number(altMowHead) <= 180,
                                         )
                                     ) {
                                         // Set to null so we don't ack it
                                         this.log.error(`Invalid mow head list in ${id}`);
-                                        altMowHeadList = null;
+                                        altMowHead = null;
                                     }
                                 } else {
                                     // No value given, so ack an empty list
-                                    altMowHeadList = [];
+                                    altMowHead = [];
                                 }
 
                                 // Ack only if we now have a list
-                                if (Array.isArray(altMowHeadList)) {
-                                    ackState = JSON.stringify(altMowHeadList);
-
-                                    if (altMowHeadList.length > 0) {
+                                if (Array.isArray(altMowHead)) {
+                                    if (altMowHead.length > 0) {
                                         // Make sure current mow_head is in this list, if not - set it ready for next task
                                         const currentMowHead = device.customAreas.find(
                                             area => area.id == customAreaId,
                                         )?.mow_head;
-                                        if (!altMowHeadList.includes(currentMowHead)) {
+                                        if (!altMowHead.includes(currentMowHead)) {
                                             // Current mow head is not in the new list, so set it to first entry
                                             this.log.debug(
-                                                `Current mow head ${currentMowHead} is not in alt list, setting to first entry ${altMowHeadList[0]}`,
+                                                `Current mow head ${currentMowHead} is not in alt list, setting to first entry ${altMowHead[0]}`,
                                             );
                                             if (
                                                 await this.doAreaSet(device, [
-                                                    { mow_head: altMowHeadList[0], id: customAreaId },
+                                                    { mow_head: altMowHead[0], id: customAreaId },
                                                 ])
                                             ) {
                                                 // We changed the current mow_head so sync needed
                                                 doSync = true;
                                             } else {
                                                 this.log.error(`Failed to set first mow head entry for ${id}`);
-                                                ackState = undefined;
                                             }
                                         }
                                     }
+
+                                    // Set in our device cache, which will also ack the state
+                                    await this.setDeviceCustomAreaProperty(device, customAreaId, { altMowHead });
                                 }
 
                                 break;
@@ -305,22 +327,6 @@ class Anthbot extends utils.Adapter {
                                 } else {
                                     this.log.error(`Invalid schedule days since last in ${id}: ${state.val}`);
                                 }
-                                break;
-                            }
-
-                            case 'mow_start':
-                                // To start mowing have to put app_state first.
-                                await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
-                            // Purposfully fall through to send the actual command!
-
-                            // Generic one-shot commands
-                            /* falls through */
-                            case 'charge_start':
-                            case 'mow_pause':
-                            case 'stop_all_tasks': {
-                                this.log.info(`${device.alias}: ${command}`);
-                                await this.client.asyncSendServiceCommand(serialNumber, command, 1);
-                                ackState = true;
                                 break;
                             }
 
@@ -710,7 +716,7 @@ class Anthbot extends utils.Adapter {
             const stateId = this.camelToUnderscoreCase(propertyName);
             const val = propertyObject[propertyName];
             await this.setStateChanged(`${device.sn}.map.custom_areas.${customAreaId}.${stateId}`, {
-                val,
+                val: typeof val == 'object' ? JSON.stringify(val) : val,
                 ack: true,
             });
             customArea[propertyName] = val;
@@ -825,30 +831,29 @@ class Anthbot extends utils.Adapter {
         // Build an array of commands for area_set
         const areaSetCommand = [];
 
-        for (const customAreaId of device.shadowState.active_area.id) {
-            const mowHeadRandomEnabled = this.parseJsonList(
-                (await this.getStateAsync(`${device.sn}.map.custom_areas.${customAreaId}.mow_head_random`))?.val,
-            );
-            if (mowHeadRandomEnabled) {
-                areaSetCommand.push(this.randomMowHeadAreaCommand(customAreaId));
+        const activeCustomAreas = device.customAreas.filter(customArea => {
+            return device.shadowState.active_area.id.includes(customArea.id);
+        });
+
+        this.log.debug(`activeCustomAreas: ${JSON.stringify(activeCustomAreas)}`);
+
+        for (const customArea of activeCustomAreas) {
+            if (customArea.mowHeadRandom) {
+                this.log.debug(`Randomising mow head for ${customArea.id}`);
+                areaSetCommand.push(this.randomMowHeadAreaCommand(customArea.id));
             } else {
-                const altMowHead = this.parseJsonList(
-                    (await this.getStateAsync(`${device.sn}.map.custom_areas.${customAreaId}.alt_mow_head`))?.val,
-                );
+                const altMowHead = customArea.altMowHead;
                 // The check is for > 0, not > 1 because that way if there's a single alternate
                 // that doesn't match current value it will get set.
                 if (Array.isArray(altMowHead) && altMowHead.length > 0) {
-                    const existingArea = device.customAreas.find(customArea => customArea.id == customAreaId);
-                    if (!existingArea) {
-                        this.log.error(`Could not find custom area ID ${customAreaId} when checking alternates`);
-                    } else {
-                        let setIndex = altMowHead.findIndex(angle => angle == existingArea.mow_head) + 1;
-                        if (setIndex > altMowHead.length) {
-                            // Wrap around to the first alternate
-                            setIndex = 0;
-                        }
-                        areaSetCommand.push({ mow_head: altMowHead[setIndex], id: customAreaId });
+                    this.log.debug(`Cycling to next mow head for ${customArea.id}`);
+                    // Remember findIndex returns -1 on no match
+                    let setIndex = altMowHead.findIndex(angle => angle == customArea.mow_head) + 1;
+                    if (setIndex > altMowHead.length) {
+                        // Wrap around to the first alternate
+                        setIndex = 0;
                     }
+                    areaSetCommand.push({ mow_head: altMowHead[setIndex], id: customArea.id });
                 }
             }
         }
@@ -1143,24 +1148,20 @@ class Anthbot extends utils.Adapter {
     parseJsonList(jsonString) {
         let out;
         if (typeof jsonString !== 'string') {
-            this.log.error('JSON to parse is not a string');
+            this.log.error(`JSON to parse is not a string: ${JSON.stringify(jsonString)}`);
         } else {
             try {
                 out = JSON.parse(jsonString);
             } catch (error) {
-                this.log.error(`Failed to parse JSON list: ${error.message}`);
+                this.log.error(`Failed to parse JSON list (${JSON.stringify(jsonString)}): ${error.message}`);
             }
         }
 
-        // List to check must be an array
         if (!Array.isArray(out)) {
-            this.log.error(`Invalid JSON list: not an array`);
+            this.log.error(`Invalid JSON list, not an array: ${JSON.stringify(jsonString)}`);
             out = undefined;
-        }
-
-        // List to check must have at least one item
-        if (out && out.length < 1) {
-            this.log.error(`Invalid JSON list: array is empty`);
+        } else if (out.length < 1) {
+            this.log.error(`Invalid JSON list, array is empty: ${JSON.stringify(jsonString)}`);
             out = undefined;
         }
 
