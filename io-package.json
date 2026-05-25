@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.6",
+    "version": "0.0.7",
     "news": {
+      "0.0.7": {
+        "en": "Add adapter controlled custom area (aka. zone) scheduling (#11)\nBreaking change: alt_mow_head is now mow_head_alts (manual migration/deletion of old state required)",
+        "de": "Fügen Sie Adapter kontrollierte benutzerdefinierte Fläche (aka. zone) Schieduling (#11) hinzu\nBruchänderung: alt mow head ist jetzt mow head alts (manuelle Migration/Auslöschung des alten Zustands erforderlich)",
+        "ru": "Добавить адаптер с контролируемой пользовательской областью (он же зона) расписание (#11)\nПереломное изменение: alt mow head теперь mow head alts (необходима ручная миграция / удаление старого состояния)",
+        "pt": "Adicionar a área personalizada controlada do adaptador (também conhecida como zona) agendamento (#11)\nMudança de quebra: alt mow head está agora a cortar head alts (a migração manual/deleção do estado antigo é necessária)",
+        "nl": "Add adapter controlled custom area (alias zone) scheduling (#11)\nVerandering breken: alt mow head is nu mow head alts (handmatige migratie/deletie van oude staat vereist)",
+        "fr": "Ajouter zone personnalisée contrôlée par adaptateur (aka. zone) programmation (#11)\nBreaking change: alt mow head est maintenant mow head alts (migration manuelle/suppression de l'ancien état requis)",
+        "it": "Aggiungere l'adattatore controllato area personalizzata (aka. zone) programmazione (#11)\nCambiamento di rottura: alt mow head è ora mow head alts (migrazione / cancellazione di stato vecchio richiesto)",
+        "es": "Añada la programación de área personalizada controlada por el adaptador (aka. zone) (#11)\nCambio de ruptura: alt mow head es ahora mow head alts (migración manual / eliminación de estado antiguo requerido)",
+        "pl": "Dodaj sterowany adapterem obszar niestandardowy (aka. zone) harmonogram (# 11)\nZmiana: alt _ mow _ head jest teraz mow _ head _ alts (manualna migracja / usunięcie starego stanu)",
+        "uk": "Додавання адаптера контрольованої користувальницької зони (ака. зона) scheduling (#11)\nЗміна розривів: alt mow head тепер mow head alts (ручна міграція/вилучення старої держави)",
+        "zh-cn": "添加适配器控制自定义区域( aka. zone) 调度( # 11)\n断裂变化: alt mow head 现在为割裂器 head alts(需要人工迁移/删除旧状态)"
+      },
       "0.0.6": {
         "en": "Improved map change detection\nAdded custom_area channels, monitoring & control",
         "de": "Verbesserte Kartenänderungserkennung\nHinzugefügt benutzerdefinierte area Kanäle, Überwachung & Kontrolle",
