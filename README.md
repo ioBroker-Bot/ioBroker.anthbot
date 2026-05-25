@@ -66,9 +66,9 @@ Note that `estimated_elapsed_time` & `estimated_elec` can only be calculated whe
 
 `mow_head_random` switch, when enabled, randomises the `mow_head` (aka. cutting angle) for this area. It is randomised each time this switch is turned on, and each time a mowing task for this area is finished successfully.
 
-`alt_mow_head` is an array of `mow_head` angles to cycle through each time a mowing task for this area is finished successfully. When the list is set, if the current `mow_head` for this area is not in the list, it will be set to the first entry. To disable this feature set a blank array (`[]`) or empty string.
+`mow_head_alts` is an array of alternate `mow_head` angles to cycle through each time a mowing task for this area is finished successfully. When the list is set, if the current `mow_head` for this area is not in the list, it will be set to the first entry. To disable this feature set a blank array (`[]`) or empty string.
 
-Note that `mow_head_random` takes priority over `alt_mow_head`.
+Note that `mow_head_random` takes priority over `mow_head_alts`.
 
 #### Scheduling
 

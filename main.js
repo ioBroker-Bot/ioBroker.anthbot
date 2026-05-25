@@ -218,47 +218,47 @@ class Anthbot extends utils.Adapter {
 
                             // Commands for custom area only
 
-                            case 'alt_mow_head': {
+                            case 'mow_head_alts': {
                                 // By default we don't need to sync after this
                                 doSync = false;
 
-                                let altMowHead;
+                                let mowHeadAlts;
                                 if (typeof state?.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
-                                    altMowHead = this.parseJsonList(state.val);
+                                    mowHeadAlts = this.parseJsonList(state.val);
 
                                     // Make sure this is a list of numbers between 0 & 180
                                     if (
-                                        !altMowHead ||
-                                        !Array.isArray(altMowHead) ||
-                                        !altMowHead.every(
-                                            altMowHead => Number(altMowHead) >= 0 && Number(altMowHead) <= 180,
+                                        !mowHeadAlts ||
+                                        !Array.isArray(mowHeadAlts) ||
+                                        !mowHeadAlts.every(
+                                            mowHeadAlts => Number(mowHeadAlts) >= 0 && Number(mowHeadAlts) <= 180,
                                         )
                                     ) {
                                         // Set to null so we don't ack it
                                         this.log.error(`Invalid mow head list in ${id}`);
-                                        altMowHead = null;
+                                        mowHeadAlts = null;
                                     }
                                 } else {
                                     // No value given, so ack an empty list
-                                    altMowHead = [];
+                                    mowHeadAlts = [];
                                 }
 
                                 // Ack only if we now have a list
-                                if (Array.isArray(altMowHead)) {
-                                    if (altMowHead.length > 0) {
+                                if (Array.isArray(mowHeadAlts)) {
+                                    if (mowHeadAlts.length > 0) {
                                         // Make sure current mow_head is in this list, if not - set it ready for next task
                                         const currentMowHead = device.customAreas.find(
                                             area => area.id == customAreaId,
                                         )?.mow_head;
-                                        if (!altMowHead.includes(currentMowHead)) {
+                                        if (!mowHeadAlts.includes(currentMowHead)) {
                                             // Current mow head is not in the new list, so set it to first entry
                                             this.log.debug(
-                                                `Current mow head ${currentMowHead} is not in alt list, setting to first entry ${altMowHead[0]}`,
+                                                `Current mow head ${currentMowHead} is not in alt list, setting to first entry ${mowHeadAlts[0]}`,
                                             );
                                             if (
                                                 await this.doAreaSet(device, [
-                                                    { mow_head: altMowHead[0], id: customAreaId },
+                                                    { mow_head: mowHeadAlts[0], id: customAreaId },
                                                 ])
                                             ) {
                                                 // We changed the current mow_head so sync needed
@@ -270,7 +270,7 @@ class Anthbot extends utils.Adapter {
                                     }
 
                                     // Set in our device cache, which will also ack the state
-                                    await this.setDeviceCustomAreaProperty(device, customAreaId, { altMowHead });
+                                    await this.setDeviceCustomAreaProperty(device, customAreaId, { mowHeadAlts });
                                 }
 
                                 break;
@@ -616,7 +616,7 @@ class Anthbot extends utils.Adapter {
                     // If set the adapter will move to the next angle in the list when mowing of
                     // the given custom area completes successfully.
                     [
-                        'alt_mow_head',
+                        'mow_head_alts',
                         'string',
                         'list',
                         `Alternates for mow_head (cutting direction) setting (array of angles, e.g. '[0, 90, 120]')`,
@@ -850,18 +850,18 @@ class Anthbot extends utils.Adapter {
                 this.log.debug(`Randomising mow head for ${customArea.id}`);
                 areaSetCommand.push(this.randomMowHeadAreaCommand(customArea.id));
             } else {
-                const altMowHead = customArea.altMowHead;
+                const mowHeadAlts = customArea.mowHeadAlts;
                 // The check is for > 0, not > 1 because that way if there's a single alternate
                 // that doesn't match current value it will get set.
-                if (Array.isArray(altMowHead) && altMowHead.length > 0) {
+                if (Array.isArray(mowHeadAlts) && mowHeadAlts.length > 0) {
                     this.log.debug(`Cycling to next mow head for ${customArea.id}`);
                     // Remember findIndex returns -1 on no match
-                    let setIndex = altMowHead.findIndex(angle => angle == customArea.mow_head) + 1;
-                    if (setIndex > altMowHead.length) {
+                    let setIndex = mowHeadAlts.findIndex(angle => angle == customArea.mow_head) + 1;
+                    if (setIndex > mowHeadAlts.length) {
                         // Wrap around to the first alternate
                         setIndex = 0;
                     }
-                    areaSetCommand.push({ mow_head: altMowHead[setIndex], id: customArea.id });
+                    areaSetCommand.push({ mow_head: mowHeadAlts[setIndex], id: customArea.id });
                 }
             }
         }
