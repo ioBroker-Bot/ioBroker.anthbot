@@ -768,6 +768,9 @@ class Anthbot extends utils.Adapter {
                     this.log.debug(`Caught custom area mowing task in time to monitor elec: ${device.lastElec}`);
                 } else {
                     // We have noticed this start event too late to monitor battery
+                    this.log.warn(
+                        `Caught custom area mowing task too late to monitor elec: ${JSON.stringify(device.shadowState.active_area.id)}`,
+                    );
                     device.customAreaMowingElec = undefined;
                 }
             }
