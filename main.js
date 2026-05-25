@@ -73,8 +73,7 @@ class Anthbot extends utils.Adapter {
      */
     async onStateChange(id, state) {
         if (state) {
-            const client = this.checkClient();
-            if (client && state.ack === false) {
+            if (this.checkClient() && state.ack === false) {
                 // This is a command from the user (e.g., from the UI or other adapter)
                 // and should be processed by the adapter
                 this.log.debug(`Command received for ${id}: ${JSON.stringify(state)}`);
@@ -115,7 +114,7 @@ class Anthbot extends utils.Adapter {
 
                             case 'mow_start':
                                 // To start mowing have to put app_state first.
-                                await client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
+                                await this.client?.asyncSendServiceCommand(serialNumber, 'app_state', 1);
                             // Purposfully fall through to send the actual command!
 
                             // Generic one-shot commands
@@ -434,21 +433,21 @@ class Anthbot extends utils.Adapter {
         await this.createDeviceObjects(device);
         this.subscribeToDevice(device);
 
-        await this.syncDevice(this.client, device);
+        await this.syncDevice(device);
     }
 
-    async syncDevice(client, device) {
+    async syncDevice(device) {
         // Don't sync right now if we are in the middle of polling
         if (device.inPoll) {
             device.syncReq = true;
-        } else if (client) {
+        } else if (this.checkClient()) {
             // We're doing a sync, so reset required flag
             device.syncReq = false;
 
             // Reset polling interval on sync
             this.clearPolling();
 
-            await client.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
+            await this.client?.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
             // Wait a moment for their backend
             await new Promise(resolve => this.setTimeout(resolve, CLOUD_SYNC_DELAY, null));
 
@@ -467,48 +466,48 @@ class Anthbot extends utils.Adapter {
     }
 
     /**
-     * @returns {object | false} API client object or false if invalid
+     * @returns {boolean} Does this.client appear to be a valid API client?
      */
     checkClient() {
         if (!this.client || typeof this.client !== 'object') {
             this.log.warn('No API client available!');
             return false;
         }
-        return this.client;
+        return true;
     }
 
     // Poll device
     async pollDevice(device) {
-        // Use client as success flag
-        let client = this.checkClient();
+        // Assume success
+        let success = true;
 
-        if (client) {
+        if (this.checkClient()) {
             // Set device flag showing we are already in the middle of a poll so any syncDevice calls are processed after
             device.inPoll = true;
 
             // Shadow state
             try {
-                device.shadowState = await client.asyncGetShadowReportedState(device.sn);
+                device.shadowState = await this.client?.asyncGetShadowReportedState(device.sn);
                 this.log.debug(`Device shadow reported state:\n${JSON.stringify(device.shadowState)}`);
                 await this.setShadowState(device);
             } catch (err) {
                 this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
-                client = false;
+                success = false;
             }
 
             // Code list
             try {
-                device.codeList = await client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
+                device.codeList = await this.client?.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
                 this.log.debug(`Device code list:\n${JSON.stringify(device.codeList)}`);
                 await this.setCodeList(device);
             } catch (err) {
                 this.log.error(`Failed to fetch code list for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
-                client = false;
+                success = false;
             }
 
-            await this.checkMapUpdates(client, device);
+            await this.checkMapUpdates(device);
 
             await this.checkCustomAreaMowing(device);
 
@@ -518,31 +517,34 @@ class Anthbot extends utils.Adapter {
 
             // If this poll actually generated a sync request do it now we've finished
             if (device.syncReq) {
-                await this.syncDevice(client, device);
+                await this.syncDevice(device);
             }
         }
 
         // If something went wrong, reconnect
-        if (!client) {
+        if (!success) {
             await this.retryConnection();
         }
     }
 
-    async checkMapUpdates(client, device) {
+    /**
+     *
+     * @param {object} device A valid device object
+     */
+    async checkMapUpdates(device) {
         const mapAreaIdStateId = `${device.sn}.map.area_id`;
         if (
-            client &&
-            (!device.mapLoaded /* Force load at startup */ ||
-                device.shadowState.map.area_id != (await this.getStateAsync(mapAreaIdStateId))?.val)
+            !device.mapLoaded /* Force load at startup */ ||
+            device.shadowState.map.area_id != (await this.getStateAsync(mapAreaIdStateId))?.val
         ) {
             // areaId does not match from time of last fetch so we need to update map
             this.log.info(
                 `${!device.mapLoaded ? 'Startup' : 'Device map area_id change detected'}, fetching new map info`,
             );
 
-            const deviceMapFiles = await client.asyncGetDeviceMap(device.sn);
+            const deviceMapFiles = await this.client?.asyncGetDeviceMap(device.sn);
 
-            const areaSetting = deviceMapFiles['area_setting.json'];
+            const areaSetting = deviceMapFiles?.['area_setting.json'];
             this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
 
             // Custom Areas (aka. zones)
@@ -625,7 +627,7 @@ class Anthbot extends utils.Adapter {
                 }
             }
 
-            const timeSetting = deviceMapFiles['time_setting.json'];
+            const timeSetting = deviceMapFiles?.['time_setting.json'];
             this.log.debug(`time_setting.json: ${JSON.stringify(timeSetting)}`);
 
             // Only save the area_id after map load to use for check detection - it must have changed
