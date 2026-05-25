@@ -17,7 +17,7 @@ Connect with Anthbot devices such as their robot mowers.
 
 After installation visit the instance settings page to add credentials for access to Anthbot cloud. The adapter will monitor & control the first device it discovers on the account.
 
-The adapter can attempt to improve on the default scheduling of the Anthbot app. By default nothing will happen but this feature can be enabled by set scheduling states under `map.custom_areas...` after starting the adapter (see below).
+The adapter can attempt to improve on the scheduling of the Anthbot app. By default nothing will happen but this feature can be enabled by setting scheduling states under `map.custom_areas...` after starting the adapter (see below).
 
 ### Global monitoring
 
@@ -80,7 +80,7 @@ Note that in order to enable scheduled mowing of an area:
 - `schedule_days_since_last` & `schedule_priority` must both be set with valid numbers
 - the area must have a valid `last_finish` state
 
-In order to achieve the last point it is is best to manually start 'Zone Mowing' in the Anthbot app and let that task complete while this adapter is running.
+In order to achieve the last point it is is best to manually start or schedule 'Zone Mowing' in the Anthbot app and let that task complete while this adapter is running.
 
 `schedule_days_since_last` is used to determine when each area needs mowing. The number of days to wait between mowing. Zero indicates cut every day.
 
@@ -98,6 +98,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
 ### 0.0.7 (2026-05-25)
 
 - (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
