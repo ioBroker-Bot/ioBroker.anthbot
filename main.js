@@ -679,7 +679,11 @@ class Anthbot extends utils.Adapter {
                 const propertyName = this.underscoreToCamelCase(stateId);
                 if (stateId && propertyName) {
                     // Populate in the passed in device object
-                    customArea[propertyName] = (await this.getStateAsync(state._id))?.val;
+                    if (state.common.role == 'list') {
+                        customArea[propertyName] = this.parseJsonList((await this.getStateAsync(state._id))?.val);
+                    } else {
+                        customArea[propertyName] = (await this.getStateAsync(state._id))?.val;
+                    }
                     this.log.debug(`loadded ${propertyName} : ${customArea[propertyName]}`);
                 }
             }
