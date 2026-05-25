@@ -102,6 +102,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 ### **WORK IN PROGRESS**
 
 - (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
+- (raintonr) Breaking change: alt_mow_head is now mow_head_alts (manual deletion of old state required)
 
 ### 0.0.6 (2026-05-22)
 
