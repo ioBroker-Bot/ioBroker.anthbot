@@ -73,7 +73,8 @@ class Anthbot extends utils.Adapter {
      */
     async onStateChange(id, state) {
         if (state) {
-            if (this.checkClient() && state.ack === false) {
+            const client = this.checkClient();
+            if (client && state.ack === false) {
                 // This is a command from the user (e.g., from the UI or other adapter)
                 // and should be processed by the adapter
                 this.log.debug(`Command received for ${id}: ${JSON.stringify(state)}`);
@@ -116,7 +117,7 @@ class Anthbot extends utils.Adapter {
 
                             case 'mow_start':
                                 // To start mowing have to put app_state first.
-                                await this.client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
+                                await client.asyncSendServiceCommand(serialNumber, 'app_state', 1);
                             // Purposfully fall through to send the actual command!
 
                             // Generic one-shot commands
@@ -125,7 +126,7 @@ class Anthbot extends utils.Adapter {
                             case 'mow_pause':
                             case 'stop_all_tasks': {
                                 this.log.info(`${device.alias}: ${command}`);
-                                await this.client.asyncSendServiceCommand(serialNumber, command, 1);
+                                await client.asyncSendServiceCommand(serialNumber, command, 1);
                                 ackState = true;
                                 break;
                             }
@@ -350,7 +351,7 @@ class Anthbot extends utils.Adapter {
                     }
                     // Sync device if not explicitally set not to
                     if (doSync) {
-                        this.syncDevice(device);
+                        await this.syncDevice(device);
                     }
                 }
             }
@@ -399,26 +400,26 @@ class Anthbot extends utils.Adapter {
     // Retry connection with backoff
     async retryConnection() {
         if (this.retryTimer) {
-            this.clearTimeout(this.retryTimer);
-            this.retryTimer = null;
-        }
-        this.clearPolling();
-        await this.setConnected(false);
-        this.client = null;
+            this.log.warn(`Connection retry timer is already running, will wait for that`);
+        } else {
+            this.client = null;
+            this.clearPolling();
+            await this.setConnected(false);
 
-        this.log.info(`Setting retry timer for ${this.currentRetryInterval / 1000}s`);
-        this.retryTimer = this.setTimeout(() => {
-            this.log.debug('Retry timer complete');
-            this.retryTimer = null;
-            this.loginAndStart();
-        }, this.currentRetryInterval);
+            this.log.info(`Setting retry timer for ${this.currentRetryInterval / 1000}s`);
+            this.retryTimer = this.setTimeout(() => {
+                this.log.debug('Retry timer complete');
+                this.retryTimer = null;
+                this.loginAndStart();
+            }, this.currentRetryInterval);
 
-        // Backoff for next retry...
-        this.currentRetryInterval *= CONNECTION_RETRY_BACKOFF;
+            // Backoff for next retry...
+            this.currentRetryInterval *= CONNECTION_RETRY_BACKOFF;
 
-        // ... but never exceed max retry interval
-        if (this.currentRetryInterval > CONNECTION_RETRY_MAX_INTERVAL) {
-            this.currentRetryInterval = CONNECTION_RETRY_MAX_INTERVAL;
+            // ... but never exceed max retry interval
+            if (this.currentRetryInterval > CONNECTION_RETRY_MAX_INTERVAL) {
+                this.currentRetryInterval = CONNECTION_RETRY_MAX_INTERVAL;
+            }
         }
     }
 
@@ -464,22 +465,21 @@ class Anthbot extends utils.Adapter {
         await this.createDeviceObjects(device);
         this.subscribeToDevice(device);
 
-        this.syncDevice(device);
+        await this.syncDevice(this.client, device);
     }
 
-    async syncDevice(device) {
+    async syncDevice(client, device) {
         // Don't sync right now if we are in the middle of polling
         if (device.inPoll) {
             device.syncReq = true;
-        } else if (this.checkClient()) {
+        } else if (client) {
             // We're doing a sync, so reset required flag
-
             device.syncReq = false;
 
             // Reset polling interval on sync
             this.clearPolling();
 
-            await this.client.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
+            await client.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
             // Wait a moment for their backend
             await new Promise(resolve => this.setTimeout(resolve, CLOUD_SYNC_DELAY, null));
 
@@ -498,46 +498,48 @@ class Anthbot extends utils.Adapter {
     }
 
     /**
-     * @returns {this is { client: { Object } }} this.client is an object
+     * @returns {Object | false} API client object or false if invalid
      */
     checkClient() {
         if (!this.client || typeof this.client !== 'object') {
             this.log.warn('No API client available!');
-            this.retryConnection();
             return false;
         }
-        return true;
+        return this.client;
     }
 
     // Poll device
     async pollDevice(device) {
-        if (this.checkClient()) {
+        // Use client as success flag
+        let client = this.checkClient();
+
+        if (client) {
             // Set device flag showing we are already in the middle of a poll so any syncDevice calls are processed after
             device.inPoll = true;
 
             // Shadow state
             try {
-                device.shadowState = await this.client.asyncGetShadowReportedState(device.sn);
+                device.shadowState = await client.asyncGetShadowReportedState(device.sn);
                 this.log.debug(`Device shadow reported state:\n${JSON.stringify(device.shadowState)}`);
                 await this.setShadowState(device);
             } catch (err) {
                 this.log.error(`Failed to fetch shadow state for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
-                this.retryConnection();
+                client = false;
             }
 
             // Code list
             try {
-                device.codeList = await this.client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
+                device.codeList = await client.asyncGetCodeList(device.sn, 1, 20 /* TODO: make configurable? */);
                 this.log.debug(`Device code list:\n${JSON.stringify(device.codeList)}`);
                 await this.setCodeList(device);
             } catch (err) {
                 this.log.error(`Failed to fetch code list for device ${device.sn}: ${err.message}`);
                 // TODO: If something goes wrong here, might not be serious, maybe don't do a full reconnect?
-                this.retryConnection();
+                client = false;
             }
 
-            await this.checkMapUpdates(device);
+            await this.checkMapUpdates(client, device);
 
             await this.checkCustomAreaMowing(device);
 
@@ -547,15 +549,20 @@ class Anthbot extends utils.Adapter {
 
             // If this poll actually generated a sync request do it now we've finished
             if (device.syncReq) {
-                this.syncDevice(device);
+                await this.syncDevice(client, device);
             }
+        }
+
+        // If something went wrong, reconnect
+        if (!client) {
+            await this.retryConnection();
         }
     }
 
-    async checkMapUpdates(device) {
+    async checkMapUpdates(client, device) {
         const mapAreaIdStateId = `${device.sn}.map.area_id`;
         if (
-            this.checkClient() &&
+            client &&
             (!device.mapLoaded /* Force load at startup */ ||
                 device.shadowState.map.area_id != (await this.getStateAsync(mapAreaIdStateId))?.val)
         ) {
@@ -564,7 +571,7 @@ class Anthbot extends utils.Adapter {
                 `${!device.mapLoaded ? 'Startup' : 'Device map area_id change detected'}, fetching new map info`,
             );
 
-            const deviceMapFiles = await this.client.asyncGetDeviceMap(device.sn);
+            const deviceMapFiles = await client.asyncGetDeviceMap(device.sn);
 
             const areaSetting = deviceMapFiles['area_setting.json'];
             this.log.debug(`area_setting.json: ${JSON.stringify(areaSetting)}`);
@@ -820,7 +827,7 @@ class Anthbot extends utils.Adapter {
                     }
                 }
 
-                this.checkCustomAreaAlternates(device);
+                await this.checkCustomAreaAlternates(device);
 
                 device.isCustomAreaMowing = false;
             } else if (!['zonemowing', 'backtodock', 'charge'].includes(device.shadowState.mode.value)) {
@@ -872,7 +879,7 @@ class Anthbot extends utils.Adapter {
 
         if (areaSetCommand.length > 0) {
             if (await this.doAreaSet(device, areaSetCommand)) {
-                this.syncDevice(device);
+                await this.syncDevice(device);
             }
         }
     }
@@ -955,7 +962,7 @@ class Anthbot extends utils.Adapter {
 
                 if (startAreaId) {
                     await this.doCustomAreaMowStart(device, [startAreaId]);
-                    this.syncDevice(device);
+                    await this.syncDevice(device);
                 }
             }
         }
