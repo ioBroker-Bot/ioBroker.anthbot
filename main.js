@@ -1180,7 +1180,7 @@ class Anthbot extends utils.Adapter {
                 if (!Array.isArray(out)) {
                     logLevel(`Invalid JSON list, not an array: ${JSON.stringify(jsonString)}`);
                     out = outOnFail;
-                } else if (out.length < 1) {
+                } else if (hardFail && out.length < 1) {
                     logLevel(`Invalid JSON list, array is empty: ${JSON.stringify(jsonString)}`);
                     out = outOnFail;
                 }
