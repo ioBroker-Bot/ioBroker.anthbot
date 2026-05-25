@@ -16,6 +16,7 @@ const SunCalc = require('suncalc3');
 const SCHEDULE_MS_WAIT_AFTER_DAWN = 3 * 60 * 60 * 1000; // 3 hours after dawn
 const SCHEDULE_MS_REQUIRED_FOR_UNKNOWN_CUSTOM_AREA = 4 * 60 * 60 * 1000; // Require at least 4 hours
 const POLLING_INTERVAL = 60 * 1000; // Poll every 60 seconds
+const CLOUD_SYNC_DELAY = 2000; // 2s
 const CONNECTION_RETRY_INTERVAL = 30 * 1000; // Starting retry interval
 const CONNECTION_RETRY_BACKOFF = 2; // Exponential backoff factor for connection retries
 const CONNECTION_RETRY_MAX_INTERVAL = 30 * 60 * 1000; // Maximum retry interval
@@ -479,8 +480,8 @@ class Anthbot extends utils.Adapter {
             this.clearPolling();
 
             await this.client.asyncSendServiceCommand(device.sn, 'get_all_props', 1);
-            // Wait a second for their backend
-            await new Promise(resolve => this.setTimeout(resolve, 1000, null));
+            // Wait a moment for their backend
+            await new Promise(resolve => this.setTimeout(resolve, CLOUD_SYNC_DELAY, null));
 
             await this.pollDevice(device);
             this.pollingInterval = this.setInterval(async () => {
