@@ -847,9 +847,7 @@ class Anthbot extends utils.Adapter {
         }
 
         if (areaSetCommand.length > 0) {
-            if (await this.doAreaSet(device, areaSetCommand)) {
-                await this.syncDevice(device);
-            }
+            await this.doAreaSet(device, areaSetCommand);
         }
     }
 
@@ -931,7 +929,6 @@ class Anthbot extends utils.Adapter {
 
                 if (startAreaId) {
                     await this.doCustomAreaMowStart(device, [startAreaId]);
-                    await this.syncDevice(device);
                 }
             }
         }
