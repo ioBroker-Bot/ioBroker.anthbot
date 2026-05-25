@@ -965,7 +965,7 @@ class Anthbot extends utils.Adapter {
      * Create multiple read onlystate objects from a list of their parameters
      *
      * @param {string} prefix State ID prefix
-     * @param {array} stateList Array of state parameters
+     * @param {Array} stateList Array of state parameters
      */
 
     async createStatesFromList(prefix, stateList) {
@@ -993,7 +993,7 @@ class Anthbot extends utils.Adapter {
      * Create multiple command state objects from a list of their parameters
      *
      * @param {string} prefix State ID prefix
-     * @param {array} commandStates Array of state parameters
+     * @param {Array} commandStates Array of state parameters
      */
     async createCommandStatesFromList(prefix, commandStates) {
         for (const state of commandStates) {
@@ -1179,8 +1179,8 @@ class Anthbot extends utils.Adapter {
     /**
      * Parses a JSON string into an array
      *
-     * @param {StateValue | string | undefined} jsonString String to parse
-     * @returns {array | undefined} Parsed array if valid, otherwise undefined
+     * @param {any} jsonString String to parse
+     * @returns {Array | undefined} Parsed array if valid, otherwise undefined
      */
 
     parseJsonList(jsonString) {
@@ -1209,9 +1209,9 @@ class Anthbot extends utils.Adapter {
     /**
      *
      * @param {object} device Device object for the check or specific list
-     * @param {array} checkAreas Array of valid area objects to check against
-     * @param {array | undefined} passedToCheck Optional list to check instead of fetching from command state
-     * @returns {Promise<array | false>} List if good, false if not
+     * @param {Array} checkAreas Array of valid area objects to check against
+     * @param {Array | undefined} passedToCheck Optional list to check instead of fetching from command state
+     * @returns {Promise<Array | false>} List if good, false if not
      */
 
     async isGoodAreaList(device, checkAreas, passedToCheck = undefined) {
