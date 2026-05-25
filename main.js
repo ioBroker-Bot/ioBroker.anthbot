@@ -81,8 +81,6 @@ class Anthbot extends utils.Adapter {
 
                 // By default, leave ackState undefined so we won't ack this
                 let ackState;
-                // By default sync afer valid command
-                let doSync = true;
 
                 const idParts = id.split('.');
 
@@ -126,15 +124,12 @@ class Anthbot extends utils.Adapter {
                             case 'mow_pause':
                             case 'stop_all_tasks': {
                                 this.log.info(`${device.alias}: ${command}`);
-                                await client.asyncSendServiceCommand(serialNumber, command, 1);
+                                await this.doDeviceCommand(device, command, 1);
                                 ackState = true;
                                 break;
                             }
 
                             case 'area_list': {
-                                // We never need to sync after this as no command will be sent
-                                doSync = false;
-
                                 let areaList;
                                 // This will affect the next start command only.
                                 if (typeof state?.val === 'string' && state.val !== '') {
@@ -210,9 +205,7 @@ class Anthbot extends utils.Adapter {
                                 const goodAreaList = await this.isGoodAreaList(device, device.ridableAreas);
                                 if (goodAreaList) {
                                     this.log.info(`${device.alias}: ridable_mow_start ${JSON.stringify(goodAreaList)}`);
-                                    await this.client.asyncSendServiceCommand(serialNumber, 'ridable_mow_start', {
-                                        id: goodAreaList,
-                                    });
+                                    await this.doDeviceCommand(serialNumber, 'ridable_mow_start', { id: goodAreaList });
                                     ackState = true;
                                 }
                                 break;
@@ -221,9 +214,6 @@ class Anthbot extends utils.Adapter {
                             // Commands for custom area only
 
                             case 'mow_head_alts': {
-                                // By default we don't need to sync after this
-                                doSync = false;
-
                                 let mowHeadAlts;
                                 if (typeof state?.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
@@ -258,16 +248,9 @@ class Anthbot extends utils.Adapter {
                                             this.log.debug(
                                                 `Current mow head ${currentMowHead} is not in alt list, setting to first entry ${mowHeadAlts[0]}`,
                                             );
-                                            if (
-                                                await this.doAreaSet(device, [
-                                                    { mow_head: mowHeadAlts[0], id: customAreaId },
-                                                ])
-                                            ) {
-                                                // We changed the current mow_head so sync needed
-                                                doSync = true;
-                                            } else {
-                                                this.log.error(`Failed to set first mow head entry for ${id}`);
-                                            }
+                                            await this.doAreaSet(device, [
+                                                { mow_head: mowHeadAlts[0], id: customAreaId },
+                                            ]);
                                         }
                                     }
 
@@ -287,17 +270,12 @@ class Anthbot extends utils.Adapter {
                                 if (mowHeadRandom) {
                                     // Is now turned on, so randomise mow_head for this custom area
                                     await this.doAreaSet(device, [this.randomMowHeadAreaCommand(customAreaId)]);
-                                } else {
-                                    // We don't need to sync when turning off
-                                    doSync = false;
                                 }
 
                                 break;
                             }
 
                             case 'schedule_enabled': {
-                                // Sync never needed
-                                doSync = false;
                                 // Force boolean
                                 const scheduleEnabled = state?.val ? true : false;
                                 // Set in our device cache, which will also ack the state
@@ -307,9 +285,6 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'schedule_priority': {
-                                // Sync never needed
-                                doSync = false;
-
                                 const schedulePriority = Number(state.val);
 
                                 // This state must be a number > 0
@@ -323,9 +298,6 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'schedule_days_since_last': {
-                                // Sync never needed
-                                doSync = false;
-
                                 const scheduleDaysSinceLast = Number(state.val);
 
                                 // This state must be a number >= 0
@@ -349,10 +321,6 @@ class Anthbot extends utils.Adapter {
                     if (typeof ackState != 'undefined') {
                         await this.setState(id, ackState, true);
                     }
-                    // Sync device if not explicitally set not to
-                    if (doSync) {
-                        await this.syncDevice(device);
-                    }
                 }
             }
         } else {
@@ -361,11 +329,14 @@ class Anthbot extends utils.Adapter {
         }
     }
 
+    async doDeviceCommand(device, command, args) {
+        this.log.info(`${device.alias}: ${command}} ${JSON.stringify(args)}`);
+        await this.client?.asyncSendServiceCommand(device.sn, command, args);
+        await this.syncDevice(device);
+    }
+
     async doCustomAreaMowStart(device, id) {
-        this.log.info(`${device.alias}: custom_area_mow_start ${JSON.stringify(id)}`);
-        await this.client?.asyncSendServiceCommand(device.sn, 'custom_area_mow_start', {
-            id,
-        });
+        await this.doDeviceCommand(device, 'custom_area_mow_start', { id });
     }
 
     async doAreaSet(device, customAreas) {
@@ -383,9 +354,7 @@ class Anthbot extends utils.Adapter {
         } else {
             // Write the given custom area data
             this.log.info(`${device.alias}: area_set ${JSON.stringify(customAreas)}`);
-            await this.client?.asyncSendServiceCommand(device.sn, 'area_set', {
-                custom_areas,
-            });
+            await this.doDeviceCommand(device, 'area_set', { custom_areas });
             success = true;
         }
         return success;
@@ -498,7 +467,7 @@ class Anthbot extends utils.Adapter {
     }
 
     /**
-     * @returns {Object | false} API client object or false if invalid
+     * @returns {object | false} API client object or false if invalid
      */
     checkClient() {
         if (!this.client || typeof this.client !== 'object') {
