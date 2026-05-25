@@ -205,7 +205,7 @@ class Anthbot extends utils.Adapter {
                                 const goodAreaList = await this.isGoodAreaList(device, device.ridableAreas);
                                 if (goodAreaList) {
                                     this.log.info(`${device.alias}: ridable_mow_start ${JSON.stringify(goodAreaList)}`);
-                                    await this.doDeviceCommand(serialNumber, 'ridable_mow_start', { id: goodAreaList });
+                                    await this.doDeviceCommand(device, 'ridable_mow_start', { id: goodAreaList });
                                     ackState = true;
                                 }
                                 break;
