@@ -680,7 +680,10 @@ class Anthbot extends utils.Adapter {
                 if (stateId && propertyName) {
                     // Populate in the passed in device object
                     if (state.common.role == 'list') {
-                        customArea[propertyName] = this.parseJsonList((await this.getStateAsync(state._id))?.val);
+                        customArea[propertyName] = this.parseJsonList(
+                            (await this.getStateAsync(state._id))?.val,
+                            false /* Don't hardfail (get empty list on failure) */,
+                        );
                     } else {
                         customArea[propertyName] = (await this.getStateAsync(state._id))?.val;
                     }
@@ -1159,27 +1162,31 @@ class Anthbot extends utils.Adapter {
      * Parses a JSON string into an array
      *
      * @param {any} jsonString String to parse
+     * @param {boolean} hardFail Return failure (undefined) on error, otherwise empty list
      * @returns {Array | undefined} Parsed array if valid, otherwise undefined
      */
 
-    parseJsonList(jsonString) {
-        let out;
+    parseJsonList(jsonString, hardFail = true) {
+        const logLevel = hardFail ? this.log.error : this.log.warn;
+
+        const outOnFail = hardFail ? undefined : [];
+        let out = outOnFail;
+
         if (typeof jsonString !== 'string') {
-            this.log.error(`JSON to parse is not a string: ${JSON.stringify(jsonString)}`);
+            logLevel(`JSON to parse is not a string: ${JSON.stringify(jsonString)}`);
         } else {
             try {
                 out = JSON.parse(jsonString);
+                if (!Array.isArray(out)) {
+                    logLevel(`Invalid JSON list, not an array: ${JSON.stringify(jsonString)}`);
+                    out = outOnFail;
+                } else if (out.length < 1) {
+                    logLevel(`Invalid JSON list, array is empty: ${JSON.stringify(jsonString)}`);
+                    out = outOnFail;
+                }
             } catch (error) {
-                this.log.error(`Failed to parse JSON list (${JSON.stringify(jsonString)}): ${error.message}`);
+                logLevel(`Failed to parse JSON list (${JSON.stringify(jsonString)}): ${error.message}`);
             }
-        }
-
-        if (!Array.isArray(out)) {
-            this.log.error(`Invalid JSON list, not an array: ${JSON.stringify(jsonString)}`);
-            out = undefined;
-        } else if (out.length < 1) {
-            this.log.error(`Invalid JSON list, array is empty: ${JSON.stringify(jsonString)}`);
-            out = undefined;
         }
 
         return out;
