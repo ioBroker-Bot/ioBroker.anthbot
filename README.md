@@ -21,13 +21,19 @@ The adapter can attempt to improve on the scheduling of the Anthbot app. By defa
 
 ### Global monitoring
 
+#### Under device `status` folder
+
 Battery level is reported in the `elec` state.
 
 View a device's status in the `mode` state (charging, mowing, standby, etc).
 
 The last status message & it's severity (event, error, etc) are shown in the `last_code`, `last_code_text` and `last_code_type` states. For users looking for more history, the `code_list` state holds a JSON array with the a larger number of messages.
 
-The rest of the states should be self explanatory.
+The rest of the states in this folder should be self explanatory.
+
+#### Under device `iob_schedule` folder
+
+Self explanatory, but be aware this is the status of the adapter's scheduling, _not_ schedules defined in the Anthbot app.
 
 ### Global commands
 
@@ -101,7 +107,8 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 ### **WORK IN PROGRESS**
 
-- (raintonr) Added schedule_custom_areas_left_today & schedule_estimated_time_left_todo_today
+- (raintonr) Added schedule folder
+- (raintonr) Breaking change: added status folder (manual deletion of old states required)
 
 ### 0.0.7 (2026-05-25)
 
