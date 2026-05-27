@@ -99,6 +99,10 @@ Note that when using `area_set` it is not necessary to define all parameters and
     ### **WORK IN PROGRESS**
 -->
 
+### **WORK IN PROGRESS**
+
+- (raintonr) Added schedule_custom_areas_left_today & schedule_estimated_time_left_todo_today
+
 ### 0.0.7 (2026-05-25)
 
 - (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
