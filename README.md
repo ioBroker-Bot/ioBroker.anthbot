@@ -104,8 +104,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.8 (2026-05-28)
 
 - (raintonr) Schedule improvements: states folder & handle overdue areas (zones)
 - (raintonr) Breaking change: added status folder (manual deletion of old states required)
@@ -130,10 +129,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 - (copilot) Adapter requires node.js >= 22 now
 - (copilot) Adapter requires admin >= 7.7.22 now
 - (raintonr) Handle temporary IoT access tokens (#9)
-
-### 0.0.3 (2026-04-25)
-
-- (raintonr) adapter checker issues
 
 [Older changelogs can be found here](CHANGELOG_OLD.md)
 

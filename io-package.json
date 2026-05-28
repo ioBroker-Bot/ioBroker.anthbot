@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "news": {
+      "0.0.8": {
+        "en": "Schedule improvements: states folder & handle overdue areas (zones)\nBreaking change: added status folder (manual deletion of old states required)",
+        "de": "Zeitplan Verbesserungen: Zustände Ordner & Griff überfällige Bereiche (Zonen)\nBreaking change: hinzugefügter Statusordner (manuelle Löschung von alten Zuständen erforderlich)",
+        "ru": "Улучшение графика: папка состояний и обработка просроченных областей (зон)\nВнесение изменений: добавленная папка состояния (необходимо ручное удаление старых состояний)",
+        "pt": "Melhorias de agendamento: pastas de estados e áreas atrasadas (zonas)\nMudança de quebra: pasta de estado adicionada (exclusão manual dos estados antigos necessários)",
+        "nl": "Plan verbeteringen: staat map & omgaan met verouderde gebieden (zones)\nBreaking change: status map toegevoegd (handmatige verwijdering van oude staten vereist)",
+        "fr": "Améliorations du calendrier : indique le dossier et traite les zones en retard (zones)\nBreaking change: ajout du dossier d'état (effacement manuel des anciens états requis)",
+        "it": "Miglioramento dell'orario: cartella stati & gestire aree in ritardo (zone)\nCambiamento di rottura: cartella di stato aggiunto (eliminazione manuale di stati vecchi richiesti)",
+        "es": "Mejoras programadas: carpeta de estados \" manejar áreas atrasadas (zonas)\nCambio de ruptura: carpeta de estado añadido (supresión manual de estados antiguos requeridos)",
+        "pl": "Ulepszenia harmonogramu: stwierdza folder & obsłużyć zaległe obszary (strefy)\nZmiana: dodany folder statusu (ręczne usunięcie starych stanów)",
+        "uk": "Поліпшення розкладу: папка та ручка перезамінних зон (зони)\nЗміна стану: додано папку стану (обов’язкове видалення старих держав)",
+        "zh-cn": "时间表改进: 设置文件夹并处理逾期区域( 区)\n中断更改: 添加状态文件夹( 需要手动删除旧状态)"
+      },
       "0.0.7": {
         "en": "Add adapter controlled custom area (aka. zone) scheduling (#11)\nBreaking change: alt_mow_head is now mow_head_alts (manual migration/deletion of old state required)",
         "de": "Fügen Sie Adapter kontrollierte benutzerdefinierte Fläche (aka. zone) Schieduling (#11) hinzu\nBruchänderung: alt mow head ist jetzt mow head alts (manuelle Migration/Auslöschung des alten Zustands erforderlich)",
