@@ -107,7 +107,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 ### **WORK IN PROGRESS**
 
-- (raintonr) Added schedule folder
+- (raintonr) Schedule improvements: states folder & handle overdue areas (zones)
 - (raintonr) Breaking change: added status folder (manual deletion of old states required)
 
 ### 0.0.7 (2026-05-25)
