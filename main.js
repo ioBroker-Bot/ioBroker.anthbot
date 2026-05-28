@@ -125,15 +125,15 @@ class Anthbot extends utils.Adapter {
                             case 'area_list': {
                                 let areaList;
                                 // This will affect the next start command only.
-                                if (typeof state?.val === 'string' && state.val !== '') {
+                                if (typeof state.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
                                     areaList = this.parseJsonList(state.val);
 
                                     // Make sure this is a list & is of valid custom or ridable area IDs
                                     if (
-                                        !areaList ||
                                         !Array.isArray(areaList) ||
                                         !(
+                                            areaList.length == 0 ||
                                             (await device.isGoodAreaList('customAreas', areaList)) ||
                                             (await device.isGoodAreaList('ridableAreas', areaList))
                                         )
@@ -156,19 +156,13 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'area_set': {
-                                let customAreas;
-                                if (typeof state?.val !== 'string') {
-                                    this.log.error('Command custom_areas for ${serialNumber} is not a string');
+                                const customAreas = this.parseJsonList(state.val);
+                                if (!Array.isArray(customAreas)) {
+                                    this.log.error(`Invalid area list for command ${id}`);
                                 } else {
-                                    try {
-                                        customAreas = JSON.parse(state.val);
-                                    } catch (error) {
-                                        this.log.error(`Failed to parse for ${id}: ${error.message}`);
+                                    if (await device.doAreaSet(customAreas)) {
+                                        ackState = JSON.stringify(customAreas);
                                     }
-                                }
-
-                                if (await device.doAreaSet(customAreas)) {
-                                    ackState = JSON.stringify(customAreas);
                                 }
 
                                 break;
@@ -206,13 +200,12 @@ class Anthbot extends utils.Adapter {
 
                             case 'mow_head_alts': {
                                 let mowHeadAlts;
-                                if (typeof state?.val === 'string' && state.val !== '') {
+                                if (typeof state.val === 'string' && state.val !== '') {
                                     // Some kind of non-blank value given
                                     mowHeadAlts = this.parseJsonList(state.val);
 
                                     // Make sure this is a list of numbers between 0 & 180
                                     if (
-                                        !mowHeadAlts ||
                                         !Array.isArray(mowHeadAlts) ||
                                         !mowHeadAlts.every(
                                             mowHeadAlts => Number(mowHeadAlts) >= 0 && Number(mowHeadAlts) <= 180,
@@ -252,7 +245,7 @@ class Anthbot extends utils.Adapter {
 
                             case 'mow_head_random': {
                                 // Force boolean
-                                const mowHeadRandom = state?.val ? true : false;
+                                const mowHeadRandom = state.val ? true : false;
                                 // Set in device cache, which will also ack the state
                                 await device.setCustomAreaProperty(customAreaId, { mowHeadRandom });
 
@@ -269,7 +262,7 @@ class Anthbot extends utils.Adapter {
 
                             case 'schedule_enabled': {
                                 // Force boolean
-                                const scheduleEnabled = state?.val ? true : false;
+                                const scheduleEnabled = state.val ? true : false;
                                 // Set in device cache, which will also ack the state
                                 await device.setCustomAreaProperty(customAreaId, { scheduleEnabled });
 
@@ -467,11 +460,11 @@ class Anthbot extends utils.Adapter {
      *
      * @param {any} jsonString String to parse
      * @param {boolean} hardFail Return failure (undefined) on error, otherwise empty list
-     * @returns {Array | undefined} Parsed array if valid, otherwise undefined
+     * @returns {Array | undefined} Parsed array if valid, otherwise: if hardfail, undefined, otherwise blank list
      */
 
     parseJsonList(jsonString, hardFail = true) {
-        const logLevel = hardFail ? this.log.error : this.log.warn;
+        const logLevel = hardFail ? this.log.error : this.log.debug;
 
         const outOnFail = hardFail ? undefined : [];
         let out = outOnFail;
@@ -483,9 +476,6 @@ class Anthbot extends utils.Adapter {
                 out = JSON.parse(jsonString);
                 if (!Array.isArray(out)) {
                     logLevel(`Invalid JSON list, not an array: ${JSON.stringify(jsonString)}`);
-                    out = outOnFail;
-                } else if (hardFail && out.length < 1) {
-                    logLevel(`Invalid JSON list, array is empty: ${JSON.stringify(jsonString)}`);
                     out = outOnFail;
                 }
             } catch (error) {
