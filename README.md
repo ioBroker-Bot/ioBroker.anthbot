@@ -104,6 +104,11 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- (raintonr) Fix mow_head_alts wrapping (#20)
+
 ### 0.0.8 (2026-05-28)
 
 - (raintonr) Schedule improvements: states folder & handle overdue areas (zones)
