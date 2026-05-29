@@ -104,8 +104,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.9 (2026-05-29)
 
 - (raintonr) Fix mow_head_alts wrapping (#20)
 
@@ -128,12 +127,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 - (raintonr) Added brief usage tips in readme
 - (raintonr) Added active_area, code_list & map states and ridable_mow_start command
-
-### 0.0.4 (2026-05-18)
-
-- (copilot) Adapter requires node.js >= 22 now
-- (copilot) Adapter requires admin >= 7.7.22 now
-- (raintonr) Handle temporary IoT access tokens (#9)
 
 [Older changelogs can be found here](CHANGELOG_OLD.md)
 

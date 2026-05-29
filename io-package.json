@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "news": {
+      "0.0.9": {
+        "en": "Fix mow_head_alts wrapping (#20)",
+        "de": "Fix mow head alts Verpackung (#20)",
+        "ru": "Fix mow head alts wrapping (#20)",
+        "pt": "Corrigir o empacotamento de cabeça  alts (# 20)",
+        "nl": "Mow head alts-inpakken repareren (#20)",
+        "fr": "Correction de l'emballage de mow head alts (#20)",
+        "it": "Risolvere la fascia mow head alts (#20)",
+        "es": "Fijar envolver mow head alts (#20)",
+        "pl": "Fix mow _ head _ alts pakowanie (# 20)",
+        "uk": "Виправлення mow head alts обгортання (#20)",
+        "zh-cn": "修补剪切除器  头部  结束( # 20)"
+      },
       "0.0.8": {
         "en": "Schedule improvements: states folder & handle overdue areas (zones)\nBreaking change: added status folder (manual deletion of old states required)",
         "de": "Zeitplan Verbesserungen: Zustände Ordner & Griff überfällige Bereiche (Zonen)\nBreaking change: hinzugefügter Statusordner (manuelle Löschung von alten Zuständen erforderlich)",
@@ -80,19 +93,6 @@
         "pl": "problemy z sprawdzaniem adaptera",
         "uk": "питання перевірки адаптера",
         "zh-cn": "适配器检查器问题"
-      },
-      "0.0.2": {
-        "en": "initial release",
-        "de": "Erstveröffentlichung",
-        "ru": "Начальная версия",
-        "pt": "lançamento inicial",
-        "nl": "Eerste uitgave",
-        "fr": "Première version",
-        "it": "Versione iniziale",
-        "es": "Versión inicial",
-        "pl": "Pierwsze wydanie",
-        "uk": "Початкова версія",
-        "zh-cn": "首次出版"
       }
     },
     "titleLang": {
