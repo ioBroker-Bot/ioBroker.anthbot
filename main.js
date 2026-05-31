@@ -13,9 +13,9 @@ const { AnthbotCloudApiClient } = require('./lib/anthbotApi');
 const { AnthbotDevice } = require('./lib/anthbotDevice');
 
 // TODO: Constants that should maybe be configurable?
-const CONNECTION_RETRY_INTERVAL = 30 * 1000; // Starting retry interval
+const CONNECTION_RETRY_INTERVAL_MS = 30 * 1000; // Starting retry interval
 const CONNECTION_RETRY_BACKOFF = 2; // Exponential backoff factor for connection retries
-const CONNECTION_RETRY_MAX_INTERVAL = 30 * 60 * 1000; // Maximum retry interval
+const CONNECTION_RETRY_MAX_INTERVAL_MS = 30 * 60 * 1000; // Maximum retry interval
 
 class Anthbot extends utils.Adapter {
     /**
@@ -33,7 +33,7 @@ class Anthbot extends utils.Adapter {
         this.devices = [];
         this.client = null;
         this.retryTimer = null;
-        this.currentRetryInterval = CONNECTION_RETRY_INTERVAL;
+        this.currentRetryInterval = CONNECTION_RETRY_INTERVAL_MS;
     }
 
     // Set/reset connection
@@ -332,8 +332,8 @@ class Anthbot extends utils.Adapter {
             this.currentRetryInterval *= CONNECTION_RETRY_BACKOFF;
 
             // ... but never exceed max retry interval
-            if (this.currentRetryInterval > CONNECTION_RETRY_MAX_INTERVAL) {
-                this.currentRetryInterval = CONNECTION_RETRY_MAX_INTERVAL;
+            if (this.currentRetryInterval > CONNECTION_RETRY_MAX_INTERVAL_MS) {
+                this.currentRetryInterval = CONNECTION_RETRY_MAX_INTERVAL_MS;
             }
         }
     }
@@ -372,7 +372,7 @@ class Anthbot extends utils.Adapter {
         }
 
         // Things look pretty good here, so reset the retry interval.
-        this.currentRetryInterval = CONNECTION_RETRY_INTERVAL;
+        this.currentRetryInterval = CONNECTION_RETRY_INTERVAL_MS;
 
         // TODO: handle multiple devices (currently we just connect to the first one)
         const device = new AnthbotDevice({ adapter: this, client: this.client, device: boundDevices[0] });
