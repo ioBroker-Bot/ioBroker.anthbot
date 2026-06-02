@@ -188,30 +188,7 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'do_not_disturb': {
-                                // TODO: better on/off options?
-                                const dndOn = {
-                                    // Don't care about timezone because we're going to set 24 x 7
-                                    timezone: 0,
-                                    timezone_sec: 0,
-                                    no_disturb: [
-                                        {
-                                            active: 1,
-                                            area_id: [],
-                                            area_points: [],
-                                            cutter_height: 0,
-                                            end_time: 86340,
-                                            id: 1,
-                                            repeat: 1,
-                                            start_time: 0,
-                                            use_end_time: 0,
-                                            week: [1, 2, 3, 4, 5, 6, 7],
-                                            workmode: 0,
-                                        },
-                                    ],
-                                };
-                                const dndOff = { ...dndOn };
-                                dndOff.no_disturb[0].active = 0;
-                                await device.doDeviceCommand('mow_regular', state.val ? dndOn : dndOff);
+                                await device.doDoNotDisturb(state.val);
                                 // No need to ack as doDeviceCommand will perform sync which will do the ack
 
                                 break;

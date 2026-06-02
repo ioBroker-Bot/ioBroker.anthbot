@@ -104,6 +104,11 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- (raintonr) Added do not disturb, vision, rain & volume commands
+
 ### 0.0.9 (2026-05-29)
 
 - (raintonr) Fix mow_head_alts wrapping (#20)
