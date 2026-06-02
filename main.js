@@ -187,6 +187,36 @@ class Anthbot extends utils.Adapter {
                                 break;
                             }
 
+                            case 'do_not_disturb': {
+                                // TODO: better on/off options?
+                                const dndOn = {
+                                    // Don't care about timezone because we're going to set 24 x 7
+                                    timezone: 0,
+                                    timezone_sec: 0,
+                                    no_disturb: [
+                                        {
+                                            active: 1,
+                                            area_id: [],
+                                            area_points: [],
+                                            cutter_height: 0,
+                                            end_time: 86340,
+                                            id: 1,
+                                            repeat: 1,
+                                            start_time: 0,
+                                            use_end_time: 0,
+                                            week: [1, 2, 3, 4, 5, 6, 7],
+                                            workmode: 0,
+                                        },
+                                    ],
+                                };
+                                const dndOff = { ...dndOn };
+                                dndOff.no_disturb[0].active = 0;
+                                await device.doDeviceCommand('mow_regular', state.val ? dndOn : dndOff);
+                                // No need to ack as doDeviceCommand will perform sync which will do the ack
+
+                                break;
+                            }
+
                             case 'ridable_mow_start': {
                                 const goodAreaList = await device.isGoodAreaList('ridableAreas');
                                 if (goodAreaList) {
@@ -260,6 +290,52 @@ class Anthbot extends utils.Adapter {
                                 break;
                             }
 
+                            case 'pobctl_level': {
+                                const pobctlLevel = Number(state.val);
+                                if (pobctlLevel < 0 || pobctlLevel > 2) {
+                                    this.log.error(`Invalid visual inspection level in ${id}: ${state.val}`);
+                                } else {
+                                    await device.doDeviceCommand('device_config', {
+                                        pobctl_level: pobctlLevel,
+                                    });
+                                    // No need to ack as doDeviceCommand will perform sync which will do the ack
+                                }
+
+                                break;
+                            }
+
+                            case 'pobctl_switch': {
+                                await device.doDeviceCommand('device_config', {
+                                    pobctl_switch: state.val ? 1 : 0,
+                                });
+                                // No need to ack as doDeviceCommand will perform sync which will do the ack
+
+                                break;
+                            }
+
+                            case 'rain_continue_time': {
+                                const rainContinueTime = Number(state.val);
+                                if (rainContinueTime < 0 || rainContinueTime > 24 * 60 * 60) {
+                                    this.log.error(`Invalid rain continue time in ${id}: ${state.val}`);
+                                } else {
+                                    await device.doDeviceCommand('device_config', {
+                                        rain_continue_time: rainContinueTime,
+                                    });
+                                    // No need to ack as doDeviceCommand will perform sync which will do the ack
+                                }
+
+                                break;
+                            }
+
+                            case 'rain_switch': {
+                                await device.doDeviceCommand('device_config', {
+                                    rain_switch: state.val ? 1 : 0,
+                                });
+                                // No need to ack as doDeviceCommand will perform sync which will do the ack
+
+                                break;
+                            }
+
                             case 'schedule_enabled': {
                                 // Force boolean
                                 const scheduleEnabled = state.val ? true : false;
@@ -295,6 +371,19 @@ class Anthbot extends utils.Adapter {
                                 break;
                             }
 
+                            case 'volume': {
+                                const volume = Number(state.val);
+                                if (volume < 0 || volume > 100) {
+                                    this.log.error(`Invalid volume in ${id}: ${state.val}`);
+                                } else {
+                                    await device.doDeviceCommand('device_config', {
+                                        volume,
+                                    });
+                                    // No need to ack as doDeviceCommand will perform sync which will do the ack
+                                }
+
+                                break;
+                            }
                             default:
                                 device.log.warn(`Unknown command: ${command}`);
                         }
@@ -410,7 +499,7 @@ class Anthbot extends utils.Adapter {
      * @param {Array} stateList Array of state parameters
      */
 
-    async createStatesFromList(prefix, stateList) {
+    async createStatesFromList(prefix, stateList, write = false) {
         for (const state of stateList) {
             const common = {
                 name: state[0],
@@ -418,35 +507,11 @@ class Anthbot extends utils.Adapter {
                 role: state[2],
                 desc: state[3],
                 read: true,
-                write: false,
+                write,
             };
             if (state[4]) {
                 common.unit = state[4];
             }
-            await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
-                type: 'state',
-                common,
-                native: {},
-            });
-        }
-    }
-
-    /**
-     * Create multiple command state objects from a list of their parameters
-     *
-     * @param {string} prefix State ID prefix
-     * @param {Array} commandStates Array of state parameters
-     */
-    async createCommandStatesFromList(prefix, commandStates) {
-        for (const state of commandStates) {
-            const common = {
-                name: state[0],
-                type: state[1],
-                role: state[2],
-                desc: state[3],
-                read: true,
-                write: true,
-            };
             await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
                 type: 'state',
                 common,
