@@ -188,8 +188,40 @@ class Anthbot extends utils.Adapter {
                             }
 
                             case 'do_not_disturb': {
-                                await device.doDoNotDisturb(state.val);
-                                // No need to ack as doDeviceCommand will perform sync which will do the ack
+                                await device.doDoNotDisturb({ active: state.val ? 1 : 0 });
+                                // No need to ack as command will perform sync which will do the ack
+
+                                break;
+                            }
+
+                            case 'do_not_disturb_start': {
+                                const val = Number(state.val);
+                                if (val < 0 || val > 86400) {
+                                    this.log.error(`Invalid do not disturb start in ${id}: ${state.val}`);
+                                } else if (val > device.timeSetting?.no_disturb?.[0]?.end_time) {
+                                    this.log.error(
+                                        `Do not disturb start cannot be after end in ${id}: ${val} > ${device.timeSetting?.no_disturb?.[0]?.end_time}`,
+                                    );
+                                } else {
+                                    await device.doDoNotDisturb({ start_time: val });
+                                    // No need to ack as command will perform sync which will do the ack
+                                }
+
+                                break;
+                            }
+
+                            case 'do_not_disturb_end': {
+                                const val = Number(state.val);
+                                if (val < 0 || val > 86400) {
+                                    this.log.error(`Invalid do not disturb end in ${id}: ${state.val}`);
+                                } else if (val < device.timeSetting?.no_disturb?.[0]?.start_time) {
+                                    this.log.error(
+                                        `Do not disturb end cannot be before start in ${id}: ${val} < ${device.timeSetting?.no_disturb?.[0]?.start_time}`,
+                                    );
+                                } else {
+                                    await device.doDoNotDisturb({ end_time: val });
+                                    // No need to ack as command will perform sync which will do the ack
+                                }
 
                                 break;
                             }
