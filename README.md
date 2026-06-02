@@ -108,6 +108,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 ### **WORK IN PROGRESS**
 
 - (raintonr) Added do not disturb, vision, rain & volume commands
+- (raintonr) Schedule improvements: do not start if in (or will not finish before) active do not disturb period
 
 ### 0.0.9 (2026-05-29)
 
