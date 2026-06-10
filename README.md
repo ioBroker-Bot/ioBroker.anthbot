@@ -15,7 +15,9 @@
 
 Connect with Anthbot devices such as their robot mowers.
 
-After installation visit the instance settings page to add credentials for access to Anthbot cloud. The adapter will monitor & control the first device it discovers on the account.
+Tested with M9 and Genie models, but other series may work. Feel free to open an issue to report problems or with feature requests.
+
+After installation visit the instance settings page to add credentials for access to Anthbot cloud. The adapter will monitor & control all bound devices it discovers on the account.
 
 The adapter can attempt to improve on the scheduling of the Anthbot app. By default nothing will happen but this feature can be enabled by setting scheduling states under `map.custom_areas...` after starting the adapter (see below).
 
@@ -109,6 +111,8 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 - (raintonr) Added do not disturb, vision, rain & volume commands
 - (raintonr) Schedule improvements: do not start if in (or will not finish before) active do not disturb period
+- (raintonr) Handle multiple devices
+- (raintonr) Handle Genie series (custom map areas not supported yet)
 
 ### 0.0.9 (2026-05-29)
 

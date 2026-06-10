@@ -416,7 +416,7 @@ class Anthbot extends utils.Adapter {
             this.log.warn(`Connection retry timer is already running, will wait for that`);
         } else {
             this.client = null;
-            this.clearPolling();
+            this.stopDevices();
             await this.setConnected(false);
 
             this.log.info(`Setting retry timer for ${this.currentRetryInterval / 1000}s`);
@@ -472,22 +472,28 @@ class Anthbot extends utils.Adapter {
         // Things look pretty good here, so reset the retry interval.
         this.currentRetryInterval = CONNECTION_RETRY_INTERVAL_MS;
 
-        // TODO: handle multiple devices (currently we just connect to the first one)
-        const device = new AnthbotDevice({ adapter: this, client: this.client, device: boundDevices[0] });
-        this.devices = [device];
-
-        await device.createObjects();
-        device.subscribeToDevice();
-        // syncDevice also initiates polling
-        await device.syncDevice();
+        for (const boundDevice of boundDevices) {
+            const device = new AnthbotDevice({ adapter: this, client: this.client, device: boundDevice });
+            await device.start();
+            this.devices.push(device);
+        }
     }
 
     /**
-     * Stop polling devices
+     * Check all devices and if at least one is online, set our state to that
      */
-    clearPolling() {
-        // TODO: Handle multiple devices?
-        this.devices[0]?.clearPolling();
+    async checkSetOnline() {
+        const onlineDevices = this.devices.filter(device => device.isOnline);
+        await this.setConnected(onlineDevices.length > 0);
+    }
+
+    /**
+     * Stop all bound devices
+     */
+    stopDevices() {
+        for (const device of this.devices) {
+            device.stop();
+        }
     }
 
     /**
@@ -568,7 +574,7 @@ class Anthbot extends utils.Adapter {
     onUnload(callback) {
         try {
             this.unsubscribeStates('*');
-            this.clearPolling();
+            this.stopDevices();
             this.setConnected(false).then(() => {
                 callback();
             });
