@@ -134,6 +134,8 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 [Older changelogs can be found here](CHANGELOG_OLD.md)
 
+[Older changelogs can be found there](CHANGELOG_OLD.md)
+
 ## License
 
 MIT License
