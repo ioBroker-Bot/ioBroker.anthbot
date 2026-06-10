@@ -1,4 +1,9 @@
 # Older changes
+## 0.0.5 (2026-05-20)
+
+- (raintonr) Added brief usage tips in readme
+- (raintonr) Added active_area, code_list & map states and ridable_mow_start command
+
 ## 0.0.4 (2026-05-18)
 
 - (copilot) Adapter requires node.js >= 22 now

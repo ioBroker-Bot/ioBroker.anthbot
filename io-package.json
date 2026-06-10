@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "news": {
+      "0.0.10": {
+        "en": "Added do not disturb, vision, rain & volume commands\nSchedule improvements: do not start if in (or will not finish before) active do not disturb period\nHandle multiple devices\nHandle Genie series (custom map areas not supported yet)",
+        "de": "Hinzugefügt nicht stören, Vision, Regen & Volumen Befehle\nZeitplanverbesserungen: Starten Sie nicht, wenn Sie aktiv sind (oder vorher nicht fertig sind)\nHandhabung mehrerer Geräte\nHandle Genie-Serie (benutzerdefinierte Kartenbereiche werden noch nicht unterstützt)",
+        "ru": "Добавлено не беспокоить, видение, дождь и объем команды\nРасписание улучшений: не начинайте, если в (или не закончите раньше) активный не нарушает период\nУправление несколькими устройствами\nСерия Handle Genie (обычные карты пока не поддерживаются)",
+        "pt": "Adicionado não perturbar, visão, chuva & comandos de volume\nMelhorias de agendamento: não iniciar se estiver ativo (ou não terminar antes) não perturbar o período\nLidar com vários dispositivos\nLidar com a série Genie (áreas de mapas personalizados ainda não suportadas)",
+        "nl": "Toegevoegd niet storen, zicht, regen & volume commando's\nPlan verbeteringen: niet starten als in (of zal niet eindigen vóór) actief niet storen periode\nMeerdere apparaten hanteren\nHandle Genie serie (custom map gebieden nog niet ondersteund)",
+        "fr": "Ajouté ne dérangez pas, la vision, la pluie et le volume commandes\nAméliorations du calendrier : ne pas commencer si en (ou ne finira pas avant) actif ne dérange pas la période\nPoignez plusieurs appareils\nPoignez la série Génie (zones de carte personnalisées non encore prises en charge)",
+        "it": "Aggiunto non disturbare, visione, pioggia & volumi comandi\nMiglioramenti di programma: non iniziare se in (o non finirà prima) attivo non disturbare il periodo\nManeggiare più dispositivi\nManiglia serie Genie (zone mappa personalizzata non ancora supportate)",
+        "es": "Añadido no molestar, visión, lluvia > comandos de volumen\nMejoras programadas: no comience si en (o no terminará antes) activo no perturba el período\nManeja múltiples dispositivos\nHandle Genie series (las áreas de mapa de clientes aún no soportadas)",
+        "pl": "Dodano nie przeszkadzać, widzenie, deszcz i głośność komend\nUlepszenia harmonogramu: nie należy zaczynać, jeśli w (lub nie zakończy się wcześniej) aktywny nie zakłócać okresu\nObsługa wielu urządzeń\nObsługa serii Genie (nieobsługiwane jeszcze obszary map)",
+        "uk": "Додано не турбувати, бачення, дощ & об'єм команди\nПоліпшення розкладу: не запускати, якщо в (або не закінчиться до) активного не турбувати період\nРучка декількох пристроїв\nHandle Genie серії (карти не підтримуються ще)",
+        "zh-cn": "添加后不扰动、 视觉、 雨量和音量命令\n时间表改进: 如果在( 或不会在之前完成) 活动时不扰动周期, 请不要开始\n处理多个设备\n处理 Genie 系列( 尚未支持海关地图区域)"
+      },
       "0.0.9": {
         "en": "Fix mow_head_alts wrapping (#20)",
         "de": "Fix mow head alts Verpackung (#20)",
@@ -80,19 +93,6 @@
         "pl": "Adapter wymaga node.js > = 22\nAdapter wymaga admin > = 7.7.22\nObsługa tymczasowych żetonów dostępu IoT (# 9)",
         "uk": "Адаптер вимагає node.js >= 22 тепер\nАдаптер вимагає адмін >= 7.7.22 тепер\nЗручності для доступу до Інтернету речей (#9)",
         "zh-cn": "适配器需要节点.js 现在22\n适任者需要管理员 \\ 7.7.22 现在\n处理临时 IOT 访问符 (# 9)"
-      },
-      "0.0.3": {
-        "en": "adapter checker issues",
-        "de": "adapter checker probleme",
-        "ru": "проблемы проверки адаптера",
-        "pt": "problemas com o verificador de adaptadores",
-        "nl": "problemen met de adaptercontrole",
-        "fr": "problèmes de vérification de l'adaptateur",
-        "it": "adattatore checker",
-        "es": "problemas de control de adaptador",
-        "pl": "problemy z sprawdzaniem adaptera",
-        "uk": "питання перевірки адаптера",
-        "zh-cn": "适配器检查器问题"
       }
     },
     "titleLang": {

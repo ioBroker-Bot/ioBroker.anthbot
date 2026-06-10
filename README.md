@@ -106,8 +106,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.10 (2026-06-10)
 
 - (raintonr) Added do not disturb, vision, rain & volume commands
 - (raintonr) Schedule improvements: do not start if in (or will not finish before) active do not disturb period
@@ -132,11 +131,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 - (raintonr) Improved map change detection
 - (raintonr) Added custom_area channels, monitoring & control
-
-### 0.0.5 (2026-05-20)
-
-- (raintonr) Added brief usage tips in readme
-- (raintonr) Added active_area, code_list & map states and ridable_mow_start command
 
 [Older changelogs can be found here](CHANGELOG_OLD.md)
 
