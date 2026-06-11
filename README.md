@@ -106,12 +106,17 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- (raintonr) Handle custom areas for Genie series
+
 ### 0.0.10 (2026-06-10)
 
 - (raintonr) Added do not disturb, vision, rain & volume commands
 - (raintonr) Schedule improvements: do not start if in (or will not finish before) active do not disturb period
 - (raintonr) Handle multiple devices
-- (raintonr) Handle Genie series (custom map areas not supported yet)
+- (raintonr) Handle Genie series (custom areas not supported yet)
 
 ### 0.0.9 (2026-05-29)
 
