@@ -187,6 +187,12 @@ class Anthbot extends utils.Adapter {
                                 break;
                             }
 
+                            case 'disable': {
+                                await device.disable(state.val);
+                                // No need to ack as setting the devices disabled state will do that
+                                break;
+                            }
+
                             case 'do_not_disturb': {
                                 await device.doDoNotDisturb({ active: state.val ? 1 : 0 });
                                 // No need to ack as command will perform sync which will do the ack
