@@ -39,9 +39,9 @@
     "@iobroker/eslint-config": "^2.3.4",
     "@iobroker/testing": "^5.2.2",
     "@tsconfig/node22": "^22.0.5",
-    "@types/iobroker": "npm:@iobroker/types@^7.1.0",
+    "@types/iobroker": "npm:@iobroker/types@^7.1.2",
     "@types/node": "^22.0.0",
-    "typescript": "~5.9.3"
+    "typescript": "^6.0.3"
   },
   "main": "main.js",
   "files": [
