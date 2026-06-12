@@ -445,7 +445,10 @@ class Anthbot extends utils.Adapter {
     // Login & start processing
     async loginAndStart() {
         // Login
-        this.client = new AnthbotCloudApiClient({ verboseLogger: this.log.debug });
+        this.client = new AnthbotCloudApiClient({
+            verboseLogger: this.log.debug,
+            setTimeout: this.setTimeout.bind(this),
+        });
 
         this.log.info('Connecting to Anthbot cloud...');
         try {
