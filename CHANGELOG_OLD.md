@@ -1,4 +1,11 @@
 # Older changes
+## 0.0.6 (2026-05-22)
+
+- (raintonr) Improved map change detection
+- (raintonr) Added custom_area channels, monitoring & control
+
+[Older changelogs can be found here](CHANGELOG_OLD.md)
+
 ## 0.0.5 (2026-05-20)
 
 - (raintonr) Added brief usage tips in readme

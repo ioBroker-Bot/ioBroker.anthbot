@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "news": {
+      "0.0.11": {
+        "en": "Handle custom areas & do not disturb for Genie series\nBetter error handling",
+        "de": "Behandeln Sie benutzerdefinierte Bereiche und stören Sie nicht für Genie-Serien\nBessere Fehlerbehandlung",
+        "ru": "Обрабатывайте пользовательские области и не беспокойте серию Genie\nЛучшее управление ошибками",
+        "pt": "Lidar com áreas personalizadas & não perturbar para a série Genie\nMelhor manipulação de erros",
+        "nl": "Aangepaste gebieden bewerken & niet storen voor Genie-series\nBetere foutafhandeling",
+        "fr": "Poignez des zones personnalisées & ne dérangez pas pour la série Genie\nMeilleure gestion des erreurs",
+        "it": "Manigliare aree personalizzate & non disturbare per la serie Genie\nMigliore gestione degli errori",
+        "es": "Manija las áreas personalizadas & no molestar para la serie Genie\nMejor manejo de errores",
+        "pl": "Obsługa niestandardowych obszarów i nie przeszkadzać dla serii Genie\nLepsza obsługa błędów",
+        "uk": "Ручка користувальницьких зон і не турбувати на серії Genie\nКраще використання помилок",
+        "zh-cn": "处理自定义区域, 不打扰 Genie 系列\n更好的错误处理"
+      },
       "0.0.10": {
         "en": "Added do not disturb, vision, rain & volume commands\nSchedule improvements: do not start if in (or will not finish before) active do not disturb period\nHandle multiple devices\nHandle Genie series (custom map areas not supported yet)",
         "de": "Hinzugefügt nicht stören, Vision, Regen & Volumen Befehle\nZeitplanverbesserungen: Starten Sie nicht, wenn Sie aktiv sind (oder vorher nicht fertig sind)\nHandhabung mehrerer Geräte\nHandle Genie-Serie (benutzerdefinierte Kartenbereiche werden noch nicht unterstützt)",
@@ -80,19 +93,6 @@
         "pl": "Dodano krótkie wskazówki użycia w readme\nDodano active _ area, code _ list & map states oraz polecenie ridable _ mow _ start",
         "uk": "Додайте поради щодо короткого використання в читме\nДодано активний area, code list & map States і ridable mow start команди",
         "zh-cn": "在readme中添加简短的使用提示\n添加活动区域、 代码列表状态和可清除的  mow  start 命令"
-      },
-      "0.0.4": {
-        "en": "Adapter requires node.js >= 22 now\nAdapter requires admin >= 7.7.22 now\nHandle temporary IoT access tokens (#9)",
-        "de": "Adapter benötigt node.js >= 22 jetzt\nAdapter benötigt admin >= 7.7.22 jetzt\nHandle temporäre IoT-Zugriffstoken (#9)",
-        "ru": "Адаптер требует node.js >= 22 сейчас\nАдаптер требует администратора >= 7.7.22\nОбработка временных токенов доступа к IoT (#9)",
-        "pt": "Adaptador requer nod.js >= 22 agora\nAdaptador requer admin >= 7.7.22 agora\nLidar com tokens de acesso temporário de IoT (# 9)",
-        "nl": "Voor de adapter zijn node.js < 22 nu nodig\nAdapter vereist admin < 7.7.22 nu\nTijdelijke IoT toegang tokens hanteren (#9)",
-        "fr": "Adaptateur nécessite node.js >= 22 maintenant\nAdaptateur nécessite admin >= 7.7.22 maintenant\nPoignez des jetons d'accès IoT temporaires (#9)",
-        "it": "Adattatore richiede node.js >= 22 ora\nAdattatore richiede admin >= 7.7.22 ora\nMantenere i gettoni di accesso IoT temporanei (#9)",
-        "es": "Adaptador requiere node.js ю= 22 ahora\nEl adaptador requiere administrador= 7.7.22 ahora\nHandle temporary IoT access tokens (#9)",
-        "pl": "Adapter wymaga node.js > = 22\nAdapter wymaga admin > = 7.7.22\nObsługa tymczasowych żetonów dostępu IoT (# 9)",
-        "uk": "Адаптер вимагає node.js >= 22 тепер\nАдаптер вимагає адмін >= 7.7.22 тепер\nЗручності для доступу до Інтернету речей (#9)",
-        "zh-cn": "适配器需要节点.js 现在22\n适任者需要管理员 \\ 7.7.22 现在\n处理临时 IOT 访问符 (# 9)"
       }
     },
     "titleLang": {

@@ -106,8 +106,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.11 (2026-06-12)
 
 - (raintonr) Handle custom areas & do not disturb for Genie series
 - (raintonr) Better error handling
@@ -132,13 +131,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 - (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
 - (raintonr) Breaking change: alt_mow_head is now mow_head_alts (manual migration/deletion of old state required)
-
-### 0.0.6 (2026-05-22)
-
-- (raintonr) Improved map change detection
-- (raintonr) Added custom_area channels, monitoring & control
-
-[Older changelogs can be found here](CHANGELOG_OLD.md)
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 
