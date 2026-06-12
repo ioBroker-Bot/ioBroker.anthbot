@@ -4,7 +4,7 @@
     "items": {
         "username": {
             "type": "text",
-            "label": "Username",
+            "label": "username",
             "newLine": true,
             "xs": 12,
             "sm": 12,
@@ -14,7 +14,7 @@
         },
         "password": {
             "type": "password",
-            "label": "Password",
+            "label": "password",
             "newLine": true,
             "xs": 12,
             "sm": 12,
@@ -24,7 +24,7 @@
         },
         "regionCode": {
             "type": "select",
-            "label": "Region",
+            "label": "region",
             "newLine": true,
             "options": [
                 { "value": 61, "label": "Australia" },
