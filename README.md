@@ -23,7 +23,7 @@ The adapter can attempt to improve on the scheduling of the Anthbot app. By defa
 
 ### Global monitoring
 
-#### Under device `status` folder
+Under device `status` folder:
 
 Battery level is reported in the `elec` state.
 
@@ -33,7 +33,7 @@ The last status message & it's severity (event, error, etc) are shown in the `la
 
 The rest of the states in this folder should be self explanatory.
 
-#### Under device `iob_schedule` folder
+Under device `iob_schedule` folder:
 
 Self explanatory, but be aware this is the status of the adapter's scheduling, _not_ schedules defined in the Anthbot app.
 
