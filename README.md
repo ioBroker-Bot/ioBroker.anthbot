@@ -110,7 +110,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 ### **WORK IN PROGRESS**
 
 - (raintonr) Handle custom areas & do not disturb for Genie series
-- (raintonr) Better handling of transient errors
+- (raintonr) Better error handling
 
 ### 0.0.10 (2026-06-10)
 
