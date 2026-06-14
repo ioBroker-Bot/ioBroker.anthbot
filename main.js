@@ -572,7 +572,7 @@ class Anthbot extends utils.Adapter {
     /**
      * Parses a JSON string into an array
      *
-     * @param {any} jsonString String to parse
+     * @param {boolean | string | number | null} jsonString String to parse
      * @param {boolean} hardFail Return failure (undefined) on error, otherwise empty list
      * @returns {Array | undefined} Parsed array if valid, otherwise: if hardfail, undefined, otherwise blank list
      */
