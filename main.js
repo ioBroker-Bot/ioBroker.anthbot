@@ -243,6 +243,31 @@ class Anthbot extends utils.Adapter {
 
                             // Commands for custom area only
 
+                            case 'cutter_height': {
+                                const cutterHeight = Number(state.val);
+                                // Must be 30, 40, 50, 60 or 70
+                                if (![30, 40, 50, 60, 70].includes(cutterHeight)) {
+                                    this.log.error(`Invalid cutter height in ${id}: ${state.val}`);
+                                } else {
+                                    await device.doCutterHeightSet(customAreaId, cutterHeight);
+                                    // No need to ack as doDeviceCommand will perform sync which will do the ack
+                                }
+
+                                break;
+                            }
+
+                            case 'mow_head': {
+                                const mowHead = Number(state.val);
+                                if (mowHead < 0 || mowHead > 180) {
+                                    this.log.error(`Invalid mow head angle in ${id}: ${state.val}`);
+                                } else {
+                                    await device.doMowHeadSet(customAreaId, mowHead);
+                                    // No need to ack as doDeviceCommand will perform sync which will do the ack
+                                }
+
+                                break;
+                            }
+
                             case 'mow_head_alts': {
                                 let mowHeadAlts;
                                 if (typeof state.val === 'string' && state.val !== '') {
@@ -299,7 +324,7 @@ class Anthbot extends utils.Adapter {
                                     device.log.info(
                                         `Setting random mow head value for newly enabled area ${customAreaId}`,
                                     );
-                                    await device.doAreaSet([device.randomMowHeadAreaCommand(customAreaId)]);
+                                    await device.doMowHeadSet(customAreaId);
                                 }
 
                                 break;

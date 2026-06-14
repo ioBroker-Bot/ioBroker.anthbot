@@ -106,6 +106,11 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+
+### **WORK IN PROGRESS**
+
+- (raintonr) Added mow_head & cutter_height custom area (zone) shortcuts
+
 ### 0.0.11 (2026-06-12)
 
 - (raintonr) Handle custom areas & do not disturb for Genie series
