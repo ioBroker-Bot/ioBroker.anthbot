@@ -45,6 +45,14 @@ class Anthbot extends utils.Adapter {
      * Is called when databases are connected and adapter received configuration.
      */
     async onReady() {
+        await this.setObjectNotExistsAsync(`info`, {
+            type: 'channel',
+            common: {
+                name: 'Information',
+            },
+            native: {},
+        });
+
         // Not connected by default
         await this.setConnected(false);
 
@@ -559,7 +567,12 @@ class Anthbot extends utils.Adapter {
                 write,
             };
             if (state[4]) {
+                // Add a unit when given
                 common.unit = state[4];
+            }
+            if (state[2].startsWith('button')) {
+                // Buttons are not readable
+                common.read = false;
             }
             await this.setObjectNotExistsAsync(`${prefix}.${state[0]}`, {
                 type: 'state',
