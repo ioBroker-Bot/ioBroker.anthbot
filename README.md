@@ -13,7 +13,7 @@
 
 ## Anthbot adapter for ioBroker
 
-Connect with Anthbot devices such as their robot mowers.
+Connect with [Anthbot](https://anthbot.com/) devices such as their robot mowers.
 
 Tested with M9 and Genie models, but other series may work. Feel free to open an issue to report problems or with feature requests.
 
