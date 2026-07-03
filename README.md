@@ -106,6 +106,12 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+- (mcm1957) BREAKING: object ids are now sanitized. This might result in changed object-ids.
+- (mcm1957) Translations have been corrected.
+- (mcm1957) Loggings has been adapted to avoid logging secrets.
+
 ### 0.0.12 (2026-07-03)
 
 - (raintonr) Added mow_head & cutter_height custom area (zone) shortcuts
