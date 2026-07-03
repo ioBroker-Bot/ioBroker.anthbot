@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.12",
+    "version": "0.1.0",
     "news": {
+      "0.1.0": {
+        "en": "BREAKING: object ids are now sanitized. This might result in changed object-ids.\nTranslations have been corrected.\nLoggings has been adapted to avoid logging secrets.",
+        "de": "EILMELDUNG: Objekt-IDs werden jetzt bereinigt. Dies kann zu geänderten Objekt-IDs führen.\nDie Übersetzungen wurden korrigiert.\nDie Protokollierung wurde so angepasst, dass keine Geheimnisse protokolliert werden.",
+        "ru": "ВНИМАНИЕ: идентификаторы объектов теперь проходят проверку на наличие ошибок. Это может привести к изменению идентификаторов объектов.\nПереводы исправлены.\nСистема Loggings была адаптирована таким образом, чтобы избежать записи секретной информации.",
+        "pt": "ATENÇÃO: os IDs dos objetos agora são higienizados. Isso pode resultar em alterações nos IDs dos objetos.\nAs traduções foram corrigidas.\nO sistema de registro de logs foi adaptado para evitar o registro de informações confidenciais.",
+        "nl": "BELANGRIJKE MEDEDELING: object-ID's worden nu gevalideerd. Dit kan leiden tot gewijzigde object-ID's.\nDe vertalingen zijn gecorrigeerd.\nDe logboekregistratie is aangepast om te voorkomen dat geheime gegevens worden vastgelegd.",
+        "fr": "ALERTE : les identifiants d'objets sont désormais nettoyés. Cela peut entraîner une modification des identifiants d'objets.\nLes traductions ont été corrigées.\nLe système de journalisation a été adapté afin d'éviter la journalisation des informations confidentielles.",
+        "it": "AVVISO IMPORTANTE: gli ID degli oggetti sono ora sanificati. Ciò potrebbe comportare la modifica degli ID degli oggetti.\nLe traduzioni sono state corrette.\nIl sistema di registrazione è stato adattato per evitare la registrazione di informazioni riservate.",
+        "es": "ÚLTIMA HORA: Los identificadores de objeto ahora se desinfectan. Esto podría provocar cambios en los identificadores de objeto.\nLas traducciones han sido corregidas.\nEl sistema de registro se ha adaptado para evitar el registro de información confidencial.",
+        "pl": "PILNE: identyfikatory obiektów są teraz czyszczone. Może to spowodować zmianę identyfikatorów obiektów.\nTłumaczenia zostały poprawione.\nRejestrowanie zostało dostosowane w celu uniknięcia ukrywania sekretów rejestrowania.",
+        "uk": "ВАЖЛИВО: ідентифікатори об'єктів тепер очищені. Це може призвести до зміни ідентифікаторів об'єктів.\nПереклади виправлено.\nВедення журналів було адаптовано, щоб уникнути секретів журналювання.",
+        "zh-cn": "重要通知：对象 ID 现已进行清理。这可能会导致对象 ID 发生变化。\n译文已修正。\n日志记录机制已进行调整，以避免记录秘密信息。"
+      },
       "0.0.12": {
         "en": "Added mow_head & cutter_height custom area (zone) shortcuts\nFix bug creating multiple polling timers\nHandle missing task finished code when custom area mowing (#35)",
         "de": "Benutzerdefinierte Bereiche (Zonen) für Mähkopf und Schneidwerkshöhe hinzugefügt\nFehler behoben, der das Erstellen mehrerer Abfragetimer verursachte\nFehlenden Code für die Aufgabenabwicklung beim Mähen benutzerdefinierter Bereiche behandeln (#35)",
@@ -80,19 +93,6 @@
         "pl": "Dodaj sterowany adapterem obszar niestandardowy (aka. zone) harmonogram (# 11)\nZmiana: alt _ mow _ head jest teraz mow _ head _ alts (manualna migracja / usunięcie starego stanu)",
         "uk": "Додавання адаптера контрольованої користувальницької зони (ака. зона) scheduling (#11)\nЗміна розривів: alt mow head тепер mow head alts (ручна міграція/вилучення старої держави)",
         "zh-cn": "添加适配器控制自定义区域( aka. zone) 调度( # 11)\n断裂变化: alt mow head 现在为割裂器 head alts(需要人工迁移/删除旧状态)"
-      },
-      "0.0.6": {
-        "en": "Improved map change detection\nAdded custom_area channels, monitoring & control",
-        "de": "Verbesserte Kartenänderungserkennung\nHinzugefügt benutzerdefinierte area Kanäle, Überwachung & Kontrolle",
-        "ru": "Улучшенное обнаружение изменений карты\nДобавлены пользовательские каналы, мониторинг и контроль",
-        "pt": "Detecção de mudança de mapa melhorada\nAdicionados canais custom area, monitoramento e controle",
-        "nl": "Verbeterde detectie van kaartwijzigingen\nAangepaste area kanalen toegevoegd, controle en controle",
-        "fr": "Amélioration de la détection du changement de carte\nAjout de canaux sur mesure, surveillance et contrôle",
-        "it": "Miglioramento del rilevamento delle modifiche della mappa\nAggiunto canali personalizzati area, monitoraggio e controllo",
-        "es": "Mejor detección del cambio de mapa\nAñadido los canales custom area, control",
-        "pl": "Ulepszone wykrywanie zmian map\nDodano niestandardowe kanały _ area, monitoring i sterowanie",
-        "uk": "Покращено виявлення зміни карт\nДодано користувальницьких каналів, контроль та контроль",
-        "zh-cn": "改进地图变更检测\n添加自定义区域频道、 监视和控制"
       }
     },
     "titleLang": {

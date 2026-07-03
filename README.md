@@ -106,7 +106,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.1.0 (2026-07-03)
 
 - (mcm1957) BREAKING: object ids are now sanitized. This might result in changed object-ids.
 - (mcm1957) Translations have been corrected.
@@ -133,11 +133,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 ### 0.0.9 (2026-05-29)
 
 - (raintonr) Fix mow_head_alts wrapping (#20)
-
-### 0.0.8 (2026-05-28)
-
-- (raintonr) Schedule improvements: states folder & handle overdue areas (zones)
-- (raintonr) Breaking change: added status folder (manual deletion of old states required)
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 
