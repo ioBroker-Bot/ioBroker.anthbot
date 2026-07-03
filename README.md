@@ -111,6 +111,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 - (raintonr) Added mow_head & cutter_height custom area (zone) shortcuts
 - (raintonr) Fix bug creating multiple polling timers
+- (raintonr) Handle missing task finished code when custom area mowing (#35)
 
 ### 0.0.11 (2026-06-12)
 
