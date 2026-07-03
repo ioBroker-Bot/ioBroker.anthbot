@@ -1,4 +1,9 @@
 # Older changes
+## 0.0.7 (2026-05-25)
+
+- (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
+- (raintonr) Breaking change: alt_mow_head is now mow_head_alts (manual migration/deletion of old state required)
+
 ## 0.0.6 (2026-05-22)
 
 - (raintonr) Improved map change detection

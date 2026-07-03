@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "anthbot",
-    "version": "0.0.11",
+    "version": "0.0.12",
     "news": {
+      "0.0.12": {
+        "en": "Added mow_head & cutter_height custom area (zone) shortcuts\nFix bug creating multiple polling timers\nHandle missing task finished code when custom area mowing (#35)",
+        "de": "Benutzerdefinierte Bereiche (Zonen) für Mähkopf und Schneidwerkshöhe hinzugefügt\nFehler behoben, der das Erstellen mehrerer Abfragetimer verursachte\nFehlenden Code für die Aufgabenabwicklung beim Mähen benutzerdefinierter Bereiche behandeln (#35)",
+        "ru": "Добавлены ярлыки для пользовательских зон (областей) скашивания и высоты режущего инструмента.\nИсправлена ошибка, приводящая к созданию нескольких таймеров опроса.\nОбработка кода, в котором отсутствует сообщение о завершении задачи при покосе пользовательской области (#35)",
+        "pt": "Adicionados atalhos para áreas personalizadas (zonas) de corte de cabeçote e altura de corte.\nCorrigido o bug que criava vários temporizadores de sondagem.\nLidar com código de tarefa concluída ausente ao cortar a grama em área personalizada (#35)",
+        "nl": "Sneltoetsen voor maaihoogte en maaihoogte toegevoegd.\nBug verholpen die meerdere pollingtimers aanmaakte.\nVerwerk ontbrekende taakvoltooiingscode bij het maaien van een aangepast gebied (#35)",
+        "fr": "Ajout de raccourcis pour les zones personnalisées (zones) de coupe et de réglage de la hauteur de coupe\nCorrection d'un bug provoquant la création de plusieurs minuteurs d'interrogation\nGérer le code de fin de tâche manquant lors de la tonte de zones personnalisées (#35)",
+        "it": "Aggiunte scorciatoie per le aree personalizzate (zone) di mow_head e cutter_height.\nRisolto un bug che causava la creazione di più timer di polling.\nGestire il codice di completamento dell'attività mancante durante la falciatura di un'area personalizzata (#35)",
+        "es": "Se agregaron accesos directos a las áreas personalizadas (zonas) mow_head y cutter_height.\nSe corrige un error que creaba múltiples temporizadores de sondeo.\nGestionar el código de finalización de tarea faltante al cortar el césped de un área personalizada (#35)",
+        "pl": "Dodano skróty do obszarów niestandardowych (stref) mow_head i cutter_height\nNaprawiono błąd tworzenia wielu liczników sondowania\nObsługa brakującego kodu ukończonego zadania podczas koszenia niestandardowego obszaru (#35)",
+        "uk": "Додано комбінації клавіш для користувацьких областей (зон) mow_head та cutter_height\nВиправлено помилку створення кількох таймерів опитування\nОбробка відсутнього коду завершення завдання під час скошування користувацької області (#35)",
+        "zh-cn": "添加了 mow_head 和 cutter_height 自定义区域（区域）快捷方式\n修复创建多个轮询计时器的错误\n处理自定义区域割草时缺失的任务完成代码（#35）"
+      },
       "0.0.11": {
         "en": "Handle custom areas & do not disturb for Genie series\nBetter error handling",
         "de": "Behandeln Sie benutzerdefinierte Bereiche und stören Sie nicht für Genie-Serien\nBessere Fehlerbehandlung",
@@ -80,19 +93,6 @@
         "pl": "Ulepszone wykrywanie zmian map\nDodano niestandardowe kanały _ area, monitoring i sterowanie",
         "uk": "Покращено виявлення зміни карт\nДодано користувальницьких каналів, контроль та контроль",
         "zh-cn": "改进地图变更检测\n添加自定义区域频道、 监视和控制"
-      },
-      "0.0.5": {
-        "en": "Added brief usage tips in readme\nAdded active_area, code_list & map states and ridable_mow_start command",
-        "de": "Kurze Nutzungstipps in readme hinzugefügt\nActive area, code list & map Zustände und ridable mow start Befehl hinzugefügt",
-        "ru": "Добавлены краткие советы по использованию в Readme\nДобавлено состояние active area, code list & map и команда ridable mow start",
-        "pt": "Adicionado breves dicas de uso no readme\nAdicionado ative  area, code  list & map states and ridable  mow  start command",
-        "nl": "Korte gebruik tips toegevoegd in readme\nActive area, code list & map states en ridable mow start commando toegevoegd",
-        "fr": "Ajout de brèves conseils d'utilisation dans readme\nAjout de la commande active area, code list & map et ridable mow start",
-        "it": "Aggiunto breve utilizzo suggerimenti in readme\nAggiunto active area, code list & mappa stati e comando ridable mow start",
-        "es": "Consejos de uso breves adicionales en el readme\nAñadido active area, code list & map states and ridable mow start command",
-        "pl": "Dodano krótkie wskazówki użycia w readme\nDodano active _ area, code _ list & map states oraz polecenie ridable _ mow _ start",
-        "uk": "Додайте поради щодо короткого використання в читме\nДодано активний area, code list & map States і ridable mow start команди",
-        "zh-cn": "在readme中添加简短的使用提示\n添加活动区域、 代码列表状态和可清除的  mow  start 命令"
       }
     },
     "titleLang": {

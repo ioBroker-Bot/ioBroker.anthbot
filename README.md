@@ -106,8 +106,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 0.0.12 (2026-07-03)
 
 - (raintonr) Added mow_head & cutter_height custom area (zone) shortcuts
 - (raintonr) Fix bug creating multiple polling timers
@@ -133,11 +132,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 
 - (raintonr) Schedule improvements: states folder & handle overdue areas (zones)
 - (raintonr) Breaking change: added status folder (manual deletion of old states required)
-
-### 0.0.7 (2026-05-25)
-
-- (raintonr) Add adapter controlled custom area (aka. zone) scheduling (#11)
-- (raintonr) Breaking change: alt_mow_head is now mow_head_alts (manual migration/deletion of old state required)
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 
