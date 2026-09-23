@@ -106,7 +106,7 @@ Note that when using `area_set` it is not necessary to define all parameters and
     Placeholder for the next version (at the beginning of the line):
     ### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 0.2.1 (2026-09-23)
 
 - (raintonr) Sanitise configured intervals at startup (#63)
 
@@ -131,12 +131,6 @@ Note that when using `area_set` it is not necessary to define all parameters and
 - (mcm1957) BREAKING: object ids are now sanitized. This might result in changed object-ids.
 - (mcm1957) Translations have been corrected.
 - (mcm1957) Loggings has been adapted to avoid logging secrets.
-
-### 0.0.12 (2026-07-03)
-
-- (raintonr) Added mow_head & cutter_height custom area (zone) shortcuts
-- (raintonr) Fix bug creating multiple polling timers
-- (raintonr) Handle missing task finished code when custom area mowing (#35)
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 

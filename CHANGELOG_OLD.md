@@ -1,4 +1,10 @@
 # Older changes
+## 0.0.12 (2026-07-03)
+
+- (raintonr) Added mow_head & cutter_height custom area (zone) shortcuts
+- (raintonr) Fix bug creating multiple polling timers
+- (raintonr) Handle missing task finished code when custom area mowing (#35)
+
 ## 0.0.11 (2026-06-12)
 
 - (raintonr) Handle custom areas & do not disturb for Genie series
