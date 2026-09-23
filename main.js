@@ -59,12 +59,32 @@ class Anthbot extends utils.Adapter {
         // Load system.config as lat/lon are required for dawn/dusk calculation
         this.sysConfig = await this.getForeignObjectAsync('system.config');
 
+        // Sanitise config
+        // TODO: if there were an easy way to pull these from jsonConfig that would be useful.
+        // TODO: until then, make sure the values below match jsonConfig!
+        // TODO: where jsonConfig exists it really should be possible to do this automatically on
+        // config load so remove the below when this issue is done:
+        // https://github.com/ioBroker/ioBroker.js-controller/issues/3517
+        this.checkConfigBounds('pollingInterval', 60, 3600);
+        this.checkConfigBounds('cloudSyncDelay', 250, 3000);
+        this.checkConfigBounds('scheduleDawnOffset', -300, 600);
+
         // Verify we have credentials
         if (this.config.username == '' || this.config.password == '' || !this.config.regionCode) {
             this.log.error('Incomplete adapter configuration! Please check settings.');
             // Don't actually terminate - when the adapter config is updated that will trigger a restart
         } else {
             this.loginAndStart();
+        }
+    }
+
+    checkConfigBounds(name, min, max) {
+        if (this.config[name] < min) {
+            this.log.warn(`${name} of ${this.config[name]} < minimum allowed, will use ${min}`);
+            this.config[name] = min;
+        } else if (this.config[name] > max) {
+            this.log.warn(`${name} of ${this.config[name]} > maximum allowed, will use ${max}`);
+            this.config[name] = max;
         }
     }
 
